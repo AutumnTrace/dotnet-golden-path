@@ -36,7 +36,7 @@ public sealed class OrderHandlerTests : IDisposable
         var result = await PlaceHandler(logger).HandleAsync(ValidRequest(), Ct);
 
         Assert.True(result.IsSuccess);
-        Assert.Same(result.Value, await _store.FindAsync(result.Value.Id, Ct));
+        Assert.Equal(result.Value.TotalMinor, (await _store.FindAsync(result.Value.Id, Ct))?.TotalMinor);
         Assert.Equal(_clock.GetUtcNow(), result.Value.PlacedAt);
 
         var measurement = Assert.Single(placed.GetMeasurementSnapshot());
@@ -117,8 +117,10 @@ public sealed class OrderHandlerTests : IDisposable
 
         Assert.True(first.IsSuccess);
         Assert.True(second.IsSuccess);
-        Assert.Equal(OrderStatus.Cancelled, order.Status);
-        Assert.Equal(_clock.GetUtcNow(), order.CancelledAt);
+        var stored = (await _store.FindAsync(order.Id, Ct))!;
+        Assert.Equal(OrderStatus.Cancelled, stored.Status);
+        Assert.Equal(_clock.GetUtcNow(), stored.CancelledAt);
+        Assert.Equal("duplicate order", stored.CancellationReason);
         Assert.Single(cancelled.GetMeasurementSnapshot());
 #if (UseKafka)
         Assert.Equal([OrderPlaced.MessageType, OrderCancelled.MessageType], _publisher.Published.Select(e => e.Type));

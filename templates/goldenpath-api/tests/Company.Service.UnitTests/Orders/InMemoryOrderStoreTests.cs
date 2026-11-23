@@ -47,6 +47,24 @@ public class InMemoryOrderStoreTests
     }
 
     [Fact]
+    public async Task Callers_get_copies_so_unsaved_changes_stay_private_until_update()
+    {
+        var store = new InMemoryOrderStore();
+        var order = Order.Place("cust-1", "EUR", [new("SKU-1", 1, 100)], Start).Value;
+        await store.AddAsync(order, Ct);
+
+        var mine = (await store.FindAsync(order.Id, Ct))!;
+        mine.Cancel("changed my mind", Start.AddMinutes(1));
+        var beforeSave = (await store.FindAsync(order.Id, Ct))!;
+        await store.UpdateAsync(mine, Ct);
+        var afterSave = (await store.FindAsync(order.Id, Ct))!;
+
+        Assert.Equal(OrderStatus.Placed, beforeSave.Status);
+        Assert.Equal(OrderStatus.Cancelled, afterSave.Status);
+        Assert.NotSame(mine, afterSave);
+    }
+
+    [Fact]
     public async Task Adding_the_same_order_twice_fails_loudly()
     {
         var store = new InMemoryOrderStore();

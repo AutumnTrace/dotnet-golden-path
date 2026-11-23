@@ -106,7 +106,8 @@ jobs:
           - { name: p-x-both-jwt, database: postgres, messaging: none, observability: both, auth: jwt }
           - { name: x-k-both-none, database: none, messaging: kafka, observability: both, auth: none }
     env:
-      SERVICE_DIR: ${{ github.workspace }}/../svc
+      # Outside the checkout, so the generated service does not inherit this repo's Directory.Build.props.
+      SERVICE_DIR: /home/runner/work/svc
       TEMPLATE_ARGS: --database ${{ matrix.database }} --messaging ${{ matrix.messaging }} --observability ${{ matrix.observability }} --auth ${{ matrix.auth }}
     steps:
       - uses: actions/checkout@v7

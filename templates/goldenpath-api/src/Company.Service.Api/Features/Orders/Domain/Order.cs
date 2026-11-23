@@ -90,7 +90,7 @@ public sealed class Order
         }
 
         // UUIDv7: unique like any GUID, but time-ordered, so keyset paging and B-tree indexes stay cheap.
-        var order = new Order(Guid.CreateVersion7(now), customerId, currency, now) { TotalMinor = total };
+        var order = new Order(Guid.CreateVersion7(now), customerId, currency, Precise(now)) { TotalMinor = total };
         order._lines.AddRange(lines);
         return order;
     }
@@ -106,7 +106,7 @@ public sealed class Order
                 return this;
             case OrderStatus.Placed:
                 Status = OrderStatus.Cancelled;
-                CancelledAt = now;
+                CancelledAt = Precise(now);
                 CancellationReason = reason;
                 return this;
             default:
@@ -136,9 +136,22 @@ public sealed class Order
         }
 
         Status = OrderStatus.Paid;
-        PaidAt = capturedAt;
+        PaidAt = Precise(capturedAt);
         return this;
     }
+
+    /// <summary>
+    /// A detached copy for stores that keep objects in memory, so callers never share (and half-see) each
+    /// other's unsaved changes. Lines are immutable records, so sharing the list is safe.
+    /// </summary>
+    internal Order Snapshot() => (Order)MemberwiseClone();
+
+    /// <summary>
+    /// Timestamps are kept to the microsecond, the precision PostgreSQL stores, so the value returned when an
+    /// order is written is exactly the value every later read returns.
+    /// </summary>
+    private static DateTimeOffset Precise(DateTimeOffset value) =>
+        value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMicrosecond));
 
     private static bool IsIsoCurrencyCode(string currency) =>
         currency.Length == 3 && currency.All(char.IsAsciiLetterUpper);

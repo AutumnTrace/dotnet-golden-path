@@ -42,7 +42,7 @@ public class PostgresTests(IntegrationFixture infrastructure)
     }
 
     [Fact]
-    public async Task Keyset_paging_walks_every_order_once_newest_first()
+    public async Task Keyset_paging_walks_every_order_exactly_once_newest_first()
     {
         var customer = $"pager-{Guid.NewGuid():N}";
         var placed = new List<Guid>();
@@ -62,7 +62,9 @@ public class PostgresTests(IntegrationFixture infrastructure)
         }
         while (cursor is not null);
 
-        Assert.Equal(Enumerable.Reverse(placed), seen);
+        // Every order exactly once, in descending id (time) order.
+        Assert.Equal(placed.Order(), seen.Order());
+        Assert.Equal(seen.OrderDescending(), seen);
     }
 
     [Fact]

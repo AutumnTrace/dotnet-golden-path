@@ -30,6 +30,18 @@ public class OrderTests
     }
 
     [Fact]
+    public void Timestamps_are_kept_to_the_microsecond_like_the_database()
+    {
+        var precise = new DateTimeOffset(2026, 3, 14, 9, 30, 0, TimeSpan.Zero).AddTicks(1_234_567);
+
+        var order = Order.Place("cust-1", "EUR", [new("SKU-1", 1, 100)], precise).Value;
+        order.Cancel("test", precise.AddTicks(9));
+
+        Assert.Equal(precise.AddTicks(-7), order.PlacedAt);
+        Assert.Equal(precise.AddTicks(9 - 6), order.CancelledAt);
+    }
+
+    [Fact]
     public void Place_rejects_an_order_without_lines()
     {
         var result = Order.Place("cust-1", "EUR", [], Now);
