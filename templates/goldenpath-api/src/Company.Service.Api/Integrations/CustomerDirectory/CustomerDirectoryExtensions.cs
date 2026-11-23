@@ -36,7 +36,9 @@ public static class CustomerDirectoryExtensions
 
         // Standard pipeline, outermost first: rate limiter, total timeout, retry, circuit breaker, attempt timeout.
         // The numbers come from configuration (CustomerDirectory:Resilience); see the handbook for why these defaults.
-        client.AddStandardResilienceHandler().Configure(section.GetSection("Resilience"));
+        // Retries are limited to safe methods: a POST is only retried by code that sends an idempotency key.
+        client.AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods())
+            .Configure(section.GetSection("Resilience"));
 
         if (section.GetValue<bool>(nameof(CustomerDirectoryOptions.UseStub)))
         {

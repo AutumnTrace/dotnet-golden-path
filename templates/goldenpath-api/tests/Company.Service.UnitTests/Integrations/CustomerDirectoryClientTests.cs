@@ -71,6 +71,19 @@ public class CustomerDirectoryClientTests
     }
 
     [Fact]
+    public async Task Unsafe_methods_are_never_retried()
+    {
+        var handler = new ScriptedHandler(ScriptedHandler.Status(HttpStatusCode.ServiceUnavailable));
+        using var services = BuildServices(handler);
+        using var http = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ICustomerDirectory));
+
+        using var response = await http.PostAsync(new Uri("customers", UriKind.Relative), content: null, Ct);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
     public async Task A_hanging_dependency_is_cut_off_by_the_attempt_timeout()
     {
         var handler = new ScriptedHandler(ScriptedHandler.Hang);
