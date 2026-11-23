@@ -2,7 +2,13 @@ using Company.Service.Api.Features.Orders;
 using Company.Service.Api.Infrastructure.Api;
 using Company.Service.Api.Infrastructure.Health;
 using Company.Service.Api.Infrastructure.Lifecycle;
+#if (UseKafka)
+using Company.Service.Api.Infrastructure.Messaging;
+#endif
 using Company.Service.Api.Infrastructure.Observability;
+#if (UsePostgres)
+using Company.Service.Api.Infrastructure.Persistence;
+#endif
 using Company.Service.Api.Infrastructure.RateLimiting;
 #if (UseJwt)
 using Company.Service.Api.Infrastructure.Security;
@@ -27,11 +33,18 @@ try
     builder.Services.AddJwtAuthentication();
 #endif
 
+#if (UsePostgres)
+    builder.Services.AddPersistence(builder.Configuration);
+#endif
+#if (UseKafka)
+    builder.Services.AddMessaging(builder.Configuration);
+#endif
+
     // Downstream services this one calls.
     builder.Services.AddCustomerDirectory(builder.Configuration);
 
     // Feature slices: one line each.
-    builder.Services.AddOrdersFeature();
+    builder.Services.AddOrdersFeature(builder.Configuration);
 
     var app = builder.Build();
 

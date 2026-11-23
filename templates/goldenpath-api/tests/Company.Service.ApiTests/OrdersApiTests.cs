@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Company.Service.Api.Features.Orders;
 using Company.Service.Api.Features.Orders.Domain;
+using Company.Service.Testing;
 
 namespace Company.Service.ApiTests;
 

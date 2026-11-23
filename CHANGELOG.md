@@ -16,6 +16,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Resilient typed `HttpClient` for a downstream customer directory (standard pipeline: timeouts, retries with jitter, circuit breaker), configured from `appsettings.json`, with a local stub at the HTTP boundary
 - Graceful shutdown: readiness fails first, a configurable drain delay, then a bounded shutdown timeout
 - Options validated at startup for every settings section; bad configuration stops the service with a message naming the setting
+- `--database postgres|none`: EF Core 10 on PostgreSQL with snake_case naming, migrations (applied on startup when enabled), order lines as a `jsonb` complex collection, `xmin` optimistic concurrency mapped to `409`, keyset paging, Npgsql tracing and a readiness check
+- `--messaging kafka|none`: `IMessagePublisher` over an outbox-ready `MessageEnvelope`, idempotent Kafka producer, at-least-once consumer with bounded retries and a dead-letter topic, W3C trace context in headers, a readiness check and an in-memory transport for local runs
+- Testcontainers integration tests (`Category=Integration`) for PostgreSQL and Kafka, and a shared `*.Testing` kit for API and integration tests
 - Unit and API tests in the generated service; template tests and a CI matrix in this repository
 
 [Unreleased]: https://github.com/AutumnTrace/dotnet-golden-path/commits/main

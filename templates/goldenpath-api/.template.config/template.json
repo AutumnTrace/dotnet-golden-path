@@ -20,6 +20,50 @@
   "preferNameDirectory": true,
   "defaultName": "Orders",
   "symbols": {
+    "database": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Where the service keeps its data. Every choice also runs without Docker using an in-memory store.",
+      "choices": [
+        {
+          "choice": "postgres",
+          "description": "PostgreSQL with EF Core 10, migrations, optimistic concurrency and a readiness check"
+        },
+        {
+          "choice": "none",
+          "description": "In-memory store only (stateless services, or bring your own persistence)"
+        }
+      ],
+      "defaultValue": "postgres"
+    },
+    "UsePostgres": {
+      "type": "computed",
+      "value": "(database == \"postgres\")"
+    },
+    "messaging": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Asynchronous messaging. Producers and consumers sit behind an outbox-friendly interface with an in-memory transport for local runs.",
+      "choices": [
+        {
+          "choice": "kafka",
+          "description": "Kafka producer and consumer (Confluent.Kafka): idempotent producer, at-least-once consumer, retries, dead-letter topic, trace propagation"
+        },
+        {
+          "choice": "none",
+          "description": "No messaging"
+        }
+      ],
+      "defaultValue": "none"
+    },
+    "UseKafka": {
+      "type": "computed",
+      "value": "(messaging == \"kafka\")"
+    },
+    "UseIntegrationTests": {
+      "type": "computed",
+      "value": "(database == \"postgres\" || messaging == \"kafka\")"
+    },
     "observability": {
       "type": "parameter",
       "datatype": "choice",
@@ -112,8 +156,35 @@
           "exclude": [
             "src/Company.Service.Api/Infrastructure/Security/**",
             "tests/Company.Service.ApiTests/AuthApiTests.cs",
-            "tests/Company.Service.ApiTests/TestTokens.cs",
+            "tests/Company.Service.Testing/TestTokens.cs",
             "tests/Company.Service.UnitTests/Infrastructure/AuthScopeTests.cs"
+          ]
+        },
+        {
+          "condition": "(!UsePostgres)",
+          "exclude": [
+            ".config/**",
+            "src/Company.Service.Api/Infrastructure/Persistence/**",
+            "src/Company.Service.Api/Features/Orders/Persistence/**",
+            "tests/Company.Service.IntegrationTests/Postgres/**"
+          ]
+        },
+        {
+          "condition": "(!UseKafka)",
+          "exclude": [
+            "src/Company.Service.Api/Infrastructure/Messaging/**",
+            "src/Company.Service.Api/Features/Orders/OrderMessages.cs",
+            "src/Company.Service.Api/Features/Orders/MarkOrderPaid.cs",
+            "tests/Company.Service.UnitTests/Messaging/**",
+            "tests/Company.Service.ApiTests/MessagingApiTests.cs",
+            "tests/Company.Service.IntegrationTests/Kafka/**",
+            "tests/Company.Service.UnitTests/Fakes/RecordingPublisher.cs"
+          ]
+        },
+        {
+          "condition": "(!UseIntegrationTests)",
+          "exclude": [
+            "tests/Company.Service.IntegrationTests/**"
           ]
         }
       ]

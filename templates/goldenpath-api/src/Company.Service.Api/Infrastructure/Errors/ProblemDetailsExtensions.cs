@@ -1,4 +1,7 @@
 using System.Diagnostics;
+#if (UsePostgres)
+using Company.Service.Api.Infrastructure.Persistence;
+#endif
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Company.Service.Api.Infrastructure.Errors;
@@ -30,6 +33,14 @@ public static class ProblemDetailsExtensions
                 problem.Detail = badRequest.Message;
                 problem.Extensions.TryAdd(ErrorCodeKey, "request.malformed");
             }
+#if (UsePostgres)
+            else if (context.Exception is ConcurrencyConflictException)
+            {
+                problem.Title = "Conflict with a concurrent update";
+                problem.Detail = "The resource changed while this request was processed. Read it again and retry.";
+                problem.Extensions.TryAdd(ErrorCodeKey, "concurrency_conflict");
+            }
+#endif
             else if (problem.Status == StatusCodes.Status500InternalServerError)
             {
                 // Never leak internals: exception messages and stack traces stay in logs and traces.
@@ -41,10 +52,21 @@ public static class ProblemDetailsExtensions
         services.AddExceptionHandler(options =>
         {
             // Binding failures are the client's fault in every environment, not a 500.
-            options.StatusCodeSelector = exception => exception is BadHttpRequestException badRequest
-                ? badRequest.StatusCode
-                : StatusCodes.Status500InternalServerError;
+            options.StatusCodeSelector = exception => exception switch
+            {
+                BadHttpRequestException badRequest => badRequest.StatusCode,
+#if (UsePostgres)
+                ConcurrencyConflictException => StatusCodes.Status409Conflict,
+#endif
+                _ => StatusCodes.Status500InternalServerError,
+            };
+
+            // Expected client-side conditions are not server errors: keep them out of the error logs.
+#if (UsePostgres)
+            options.SuppressDiagnosticsCallback = context => context.Exception is BadHttpRequestException or ConcurrencyConflictException;
+#else
             options.SuppressDiagnosticsCallback = context => context.Exception is BadHttpRequestException;
+#endif
         });
 
         return services;

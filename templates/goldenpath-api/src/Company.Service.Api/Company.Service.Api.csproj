@@ -9,17 +9,38 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Company.Service.UnitTests" />
     <InternalsVisibleTo Include="Company.Service.ApiTests" />
+    <!--#if (UseIntegrationTests) -->
+    <InternalsVisibleTo Include="Company.Service.IntegrationTests" />
+    <!--#endif -->
+    <InternalsVisibleTo Include="Company.Service.Testing" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" />
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
     <PackageReference Include="Asp.Versioning.OpenApi" />
+    <!--#if (UseKafka) -->
+    <PackageReference Include="Confluent.Kafka" />
+    <!--#endif -->
+    <!--#if (UsePostgres) -->
+    <PackageReference Include="EFCore.NamingConventions" />
+    <!--#endif -->
     <!--#if (UseJwt) -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <!--#endif -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <!--#if (UsePostgres) -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <!--#endif -->
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <!--#if (UsePostgres) -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.OpenTelemetry" />
+    <!--#endif -->
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />

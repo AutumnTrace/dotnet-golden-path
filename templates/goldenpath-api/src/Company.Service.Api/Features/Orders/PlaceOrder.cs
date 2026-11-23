@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using Company.Service.Api.Features.Orders.Domain;
 using Company.Service.Api.Infrastructure.Errors;
+#if (UseKafka)
+using Company.Service.Api.Infrastructure.Messaging;
+#endif
 using Company.Service.Api.Integrations.CustomerDirectory;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -21,6 +24,9 @@ public sealed record PlaceOrderLineRequest(
 internal sealed class PlaceOrderHandler(
     IOrderStore store,
     ICustomerDirectory customers,
+#if (UseKafka)
+    IMessagePublisher publisher,
+#endif
     TimeProvider clock,
     OrdersMetrics metrics,
     ILogger<PlaceOrderHandler> logger)
@@ -53,6 +59,17 @@ internal sealed class PlaceOrderHandler(
 
         var order = placed.Value;
         await store.AddAsync(order, cancellationToken);
+#if (UseKafka)
+
+        // Not atomic with the insert above. Where a lost event is unacceptable, implement IMessagePublisher as an
+        // outbox that stores the envelope in the same transaction; this call site does not change.
+        await publisher.PublishAsync(
+            OrderTopics.OrderEvents,
+            order.Id.ToString(),
+            new OrderPlaced(order.Id, order.CustomerId, order.Currency, order.TotalMinor, order.PlacedAt),
+            order.PlacedAt,
+            cancellationToken);
+#endif
 
         Activity.Current?.SetTag("order.id", order.Id);
         metrics.Placed(order.Currency);

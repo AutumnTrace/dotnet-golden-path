@@ -2,6 +2,9 @@
 using Azure.Monitor.OpenTelemetry.Exporter;
 #endif
 using Microsoft.Extensions.Options;
+#if (UsePostgres)
+using Npgsql;
+#endif
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -71,17 +74,30 @@ public static class ObservabilityExtensions
             .ConfigureResource(resource => resource
                 .AddService(serviceName, serviceVersion: Telemetry.ServiceVersion, serviceInstanceId: Environment.MachineName)
                 .AddAttributes([new("deployment.environment.name", environment)]))
-            .WithTracing(tracing => tracing
-                .SetSampler(services => new ParentBasedSampler(new TraceIdRatioBasedSampler(
-                    services.GetRequiredService<IOptions<ObservabilityOptions>>().Value.TraceSampleRatio)))
-                .AddSource(Telemetry.ActivitySourceName)
-                .AddAspNetCoreInstrumentation(options => options.Filter = context => !IsProbe(context.Request.Path))
-                .AddHttpClientInstrumentation())
-            .WithMetrics(metrics => metrics
-                .AddMeter(Telemetry.MeterName)
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddRuntimeInstrumentation());
+            .WithTracing(tracing =>
+            {
+                tracing
+                    .SetSampler(services => new ParentBasedSampler(new TraceIdRatioBasedSampler(
+                        services.GetRequiredService<IOptions<ObservabilityOptions>>().Value.TraceSampleRatio)))
+                    .AddSource(Telemetry.ActivitySourceName)
+                    .AddAspNetCoreInstrumentation(options => options.Filter = context => !IsProbe(context.Request.Path))
+                    .AddHttpClientInstrumentation();
+#if (UsePostgres)
+                tracing.AddNpgsql();
+#endif
+            })
+            .WithMetrics(metrics =>
+            {
+                metrics
+                    .AddMeter(Telemetry.MeterName)
+                    .AddMeter("Polly")
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddRuntimeInstrumentation();
+#if (UsePostgres)
+                metrics.AddMeter("Npgsql");
+#endif
+            });
 
 #if (UseOtlp)
         // Standard OTEL_EXPORTER_OTLP_* variables configure endpoint, protocol and headers.

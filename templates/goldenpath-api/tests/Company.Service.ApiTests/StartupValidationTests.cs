@@ -1,3 +1,4 @@
+using Company.Service.Testing;
 using Microsoft.AspNetCore.Hosting;
 #if (UseJwt)
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -70,6 +71,12 @@ public class StartupValidationTests
             builder.UseSetting("Serilog:MinimumLevel:Default", "Warning");
             builder.UseSetting("CustomerDirectory:UseStub", "true");
             builder.UseSetting("Shutdown:DrainDelay", "00:00:00");
+#if (UsePostgres)
+            builder.UseSetting("Database:Provider", "InMemory");
+#endif
+#if (UseKafka)
+            builder.UseSetting("Messaging:Provider", "InMemory");
+#endif
         }
     }
 #endif

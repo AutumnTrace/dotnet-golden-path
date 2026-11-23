@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Company.Service.Testing;
 using Microsoft.AspNetCore.Hosting;
 
 namespace Company.Service.ApiTests;

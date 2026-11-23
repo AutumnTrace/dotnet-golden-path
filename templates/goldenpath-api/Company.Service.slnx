@@ -4,6 +4,10 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Company.Service.ApiTests/Company.Service.ApiTests.csproj" />
+<!--#if (UseIntegrationTests) -->
+    <Project Path="tests/Company.Service.IntegrationTests/Company.Service.IntegrationTests.csproj" />
+<!--#endif -->
+    <Project Path="tests/Company.Service.Testing/Company.Service.Testing.csproj" />
     <Project Path="tests/Company.Service.UnitTests/Company.Service.UnitTests.csproj" />
   </Folder>
 </Solution>

@@ -4,7 +4,7 @@
 # not needed (integration tests, images and charts are covered by CI).
 #
 #   eng/verify-combinations.sh                 # every combination
-#   eng/verify-combinations.sh both            # only combinations whose arguments contain "both"
+#   eng/verify-combinations.sh "--messaging kafka"   # only combinations whose arguments contain the text
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -17,9 +17,13 @@ dotnet pack "$root/src/GoldenPath.Templates" -c Release -o "$work/pkg" --nologo 
 dotnet new install "$work"/pkg/GoldenPath.Templates.*.nupkg --debug:custom-hive "$work/hive" >/dev/null
 
 combinations=()
-for observability in otlp appinsights both; do
-  for auth in jwt none; do
-    combinations+=("--observability $observability --auth $auth")
+for database in postgres none; do
+  for messaging in kafka none; do
+    for observability in otlp appinsights both; do
+      for auth in jwt none; do
+        combinations+=("--database $database --messaging $messaging --observability $observability --auth $auth")
+      done
+    done
   done
 done
 

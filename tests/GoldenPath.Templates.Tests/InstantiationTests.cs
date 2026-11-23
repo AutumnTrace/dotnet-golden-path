@@ -83,6 +83,53 @@ public class InstantiationTests(TemplateFixture template)
     }
 
     [Theory]
+    [MemberData(nameof(Combinations))]
+    public async Task Persistence_code_exists_only_with_postgres(string arguments)
+    {
+        var options = Parse(arguments);
+        var service = await GenerateAsync(arguments);
+        var api = $"src/{options.ServiceName}.Api";
+
+        Assert.Equal(options.UsesPostgres, service.Exists($"{api}/Infrastructure/Persistence/AppDbContext.cs"));
+        Assert.Equal(options.UsesPostgres, service.Files.Any(f => f.StartsWith($"{api}/Infrastructure/Persistence/Migrations/", StringComparison.Ordinal)));
+        Assert.Equal(options.UsesPostgres, service.Exists(".config/dotnet-tools.json"));
+        Assert.Equal(options.UsesPostgres, service.FilesContaining("Npgsql").Count > 0);
+        Assert.Equal(options.UsesPostgres, service.FilesContaining("\"ConnectionStrings\"").Count > 0);
+    }
+
+    [Theory]
+    [MemberData(nameof(Combinations))]
+    public async Task Messaging_code_exists_only_with_kafka(string arguments)
+    {
+        var options = Parse(arguments);
+        var service = await GenerateAsync(arguments);
+        var api = $"src/{options.ServiceName}.Api";
+
+        Assert.Equal(options.UsesKafka, service.Exists($"{api}/Infrastructure/Messaging/KafkaConsumerService.cs"));
+        Assert.Equal(options.UsesKafka, service.Exists($"{api}/Features/Orders/MarkOrderPaid.cs"));
+        Assert.Equal(options.UsesKafka, service.FilesContaining("Confluent.Kafka").Count > 0);
+        Assert.Equal(options.UsesKafka, service.FilesContaining("IMessagePublisher").Count > 0);
+    }
+
+    [Theory]
+    [MemberData(nameof(Combinations))]
+    public async Task Integration_tests_exist_exactly_when_there_is_infrastructure_and_are_all_tagged(string arguments)
+    {
+        var options = Parse(arguments);
+        var service = await GenerateAsync(arguments);
+        var project = $"tests/{options.ServiceName}.IntegrationTests";
+
+        Assert.Equal(options.HasIntegrationTests, service.Exists($"{project}/{options.ServiceName}.IntegrationTests.csproj"));
+        var testClasses = service.Files
+            .Where(f => f.StartsWith(project, StringComparison.Ordinal) && f.EndsWith("Tests.cs", StringComparison.Ordinal))
+            .ToList();
+        Assert.Equal(options.HasIntegrationTests, testClasses.Count > 0);
+        Assert.All(testClasses, file => Assert.Contains("[Trait(\"Category\", \"Integration\")]", service.Read(file), StringComparison.Ordinal));
+        Assert.Equal(options.UsesPostgres, testClasses.Any(f => f.Contains("/Postgres/", StringComparison.Ordinal)));
+        Assert.Equal(options.UsesKafka, testClasses.Any(f => f.Contains("/Kafka/", StringComparison.Ordinal)));
+    }
+
+    [Theory]
     [InlineData("Orders", "Orders.Api", "orders")]
     [InlineData("Wallet.Gateway", "Wallet.Gateway.Api", "wallet-gateway")]
     [InlineData("PaymentRouting", "PaymentRouting.Api", "payment-routing")]
@@ -111,9 +158,10 @@ public class InstantiationTests(TemplateFixture template)
     private static TemplateOptions Parse(string arguments) =>
         TemplateOptions.All().Single(options => options.ToString() == arguments);
 
+    /// <summary>Each combination is generated once per test run and shared by every check on it.</summary>
     private async Task<GeneratedService> GenerateAsync(string arguments)
     {
         var options = Parse(arguments);
-        return new GeneratedService(await template.InstantiateAsync(options.ServiceName, options.ToArguments(), Ct));
+        return new GeneratedService(await template.InstantiateOnceAsync(options.ServiceName, options.ToArguments(), Ct));
     }
 }

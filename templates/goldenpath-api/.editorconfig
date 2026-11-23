@@ -25,6 +25,10 @@ dotnet_sort_system_directives_first = true
 # CA1716: names like `Error` clash with VB keywords; a service is never consumed from VB.
 dotnet_diagnostic.CA1716.severity = none
 
+# EF Core migrations are generated code: analyzers and style rules do not apply.
+[**/Migrations/*.cs]
+generated_code = true
+
 # Verify snapshots must stay byte-for-byte what the test produced.
 [*.verified.*]
 charset = utf-8

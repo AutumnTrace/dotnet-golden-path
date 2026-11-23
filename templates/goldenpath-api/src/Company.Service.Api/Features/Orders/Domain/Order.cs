@@ -114,6 +114,32 @@ public sealed class Order
         }
     }
 
+    /// <summary>
+    /// Records a captured payment. The amount and currency must match the order exactly; a second capture for
+    /// an order that is already paid is a no-op, because payment events can be delivered more than once.
+    /// </summary>
+    public Result<Order> RecordPayment(long amountMinor, string currency, DateTimeOffset capturedAt)
+    {
+        if (Status == OrderStatus.Paid)
+        {
+            return this;
+        }
+
+        if (Status != OrderStatus.Placed)
+        {
+            return OrderErrors.InvalidState(Id, Status, "paid");
+        }
+
+        if (amountMinor != TotalMinor || !string.Equals(currency, Currency, StringComparison.Ordinal))
+        {
+            return OrderErrors.PaymentMismatch(Id, TotalMinor, Currency, amountMinor, currency);
+        }
+
+        Status = OrderStatus.Paid;
+        PaidAt = capturedAt;
+        return this;
+    }
+
     private static bool IsIsoCurrencyCode(string currency) =>
         currency.Length == 3 && currency.All(char.IsAsciiLetterUpper);
 }

@@ -18,6 +18,9 @@ public sealed class OrderHandlerTests : IDisposable
     private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 3, 14, 9, 30, 0, TimeSpan.Zero));
     private readonly InMemoryOrderStore _store = new();
     private readonly FakeCustomerDirectory _customers = new();
+#if (UseKafka)
+    private readonly RecordingPublisher _publisher = new();
+#endif
     private readonly OrdersMetrics _metrics;
 
     public OrderHandlerTests() => _metrics = new OrdersMetrics(_services.GetRequiredService<IMeterFactory>());
@@ -29,9 +32,8 @@ public sealed class OrderHandlerTests : IDisposable
     {
         using var placed = Collect("orders.placed");
         var logger = new FakeLogger<PlaceOrderHandler>();
-        var handler = new PlaceOrderHandler(_store, _customers, _clock, _metrics, logger);
 
-        var result = await handler.HandleAsync(ValidRequest(), Ct);
+        var result = await PlaceHandler(logger).HandleAsync(ValidRequest(), Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Same(result.Value, await _store.FindAsync(result.Value.Id, Ct));
@@ -45,15 +47,28 @@ public sealed class OrderHandlerTests : IDisposable
         Assert.Equal(1001, log.Id.Id);
         Assert.Equal(LogLevel.Information, log.Level);
     }
+#if (UseKafka)
+
+    [Fact]
+    public async Task PlaceOrder_publishes_OrderPlaced_keyed_by_order_id()
+    {
+        var order = (await PlaceHandler().HandleAsync(ValidRequest(), Ct)).Value;
+
+        var envelope = Assert.Single(_publisher.Published);
+        Assert.Equal(OrderTopics.OrderEvents, envelope.Topic);
+        Assert.Equal(order.Id.ToString(), envelope.Key);
+        Assert.Equal(OrderPlaced.MessageType, envelope.Type);
+        Assert.Equal(order.TotalMinor, envelope.Read<OrderPlaced>().TotalMinor);
+    }
+#endif
 
     [Fact]
     public async Task PlaceOrder_returns_the_rule_violation_and_stores_nothing()
     {
         using var placed = Collect("orders.placed");
-        var handler = new PlaceOrderHandler(_store, _customers, _clock, _metrics, new FakeLogger<PlaceOrderHandler>());
         var request = ValidRequest() with { Lines = [new("SKU-1", 1, 100), new("sku-1", 1, 100)] };
 
-        var result = await handler.HandleAsync(request, Ct);
+        var result = await PlaceHandler().HandleAsync(request, Ct);
 
         Assert.Equal("orders.duplicate_sku", result.Error?.Code);
         Assert.Empty(await _store.ListAsync(new OrderQuery(null, null, null, 10), Ct));
@@ -67,9 +82,8 @@ public sealed class OrderHandlerTests : IDisposable
     public async Task PlaceOrder_only_accepts_active_customers(CustomerStatus status, string expectedCode)
     {
         _customers.Statuses["cust-42"] = status;
-        var handler = new PlaceOrderHandler(_store, _customers, _clock, _metrics, new FakeLogger<PlaceOrderHandler>());
 
-        var result = await handler.HandleAsync(ValidRequest(), Ct);
+        var result = await PlaceHandler().HandleAsync(ValidRequest(), Ct);
 
         Assert.Equal(expectedCode, result.Error?.Code);
         Assert.Empty(await _store.ListAsync(new OrderQuery(null, null, null, 10), Ct));
@@ -78,9 +92,7 @@ public sealed class OrderHandlerTests : IDisposable
     [Fact]
     public async Task PlaceOrder_does_not_call_the_directory_for_an_order_that_breaks_the_rules()
     {
-        var handler = new PlaceOrderHandler(_store, _customers, _clock, _metrics, new FakeLogger<PlaceOrderHandler>());
-
-        await handler.HandleAsync(ValidRequest() with { Currency = "eur" }, Ct);
+        await PlaceHandler().HandleAsync(ValidRequest() with { Currency = "eur" }, Ct);
 
         Assert.Equal(0, _customers.Calls);
     }
@@ -88,9 +100,7 @@ public sealed class OrderHandlerTests : IDisposable
     [Fact]
     public async Task CancelOrder_returns_not_found_for_an_unknown_id()
     {
-        var handler = new CancelOrderHandler(_store, _clock, _metrics, new FakeLogger<CancelOrderHandler>());
-
-        var result = await handler.HandleAsync(Guid.CreateVersion7(), new CancelOrderRequest("duplicate order"), Ct);
+        var result = await CancelHandler().HandleAsync(Guid.CreateVersion7(), new CancelOrderRequest("duplicate order"), Ct);
 
         Assert.Equal("orders.not_found", result.Error?.Code);
     }
@@ -99,25 +109,40 @@ public sealed class OrderHandlerTests : IDisposable
     public async Task CancelOrder_cancels_once_and_counts_once()
     {
         using var cancelled = Collect("orders.cancelled");
-        var order = (await new PlaceOrderHandler(_store, _customers, _clock, _metrics, new FakeLogger<PlaceOrderHandler>())
-            .HandleAsync(ValidRequest(), Ct)).Value;
-        var handler = new CancelOrderHandler(_store, _clock, _metrics, new FakeLogger<CancelOrderHandler>());
+        var order = (await PlaceHandler().HandleAsync(ValidRequest(), Ct)).Value;
 
         _clock.Advance(TimeSpan.FromMinutes(3));
-        var first = await handler.HandleAsync(order.Id, new CancelOrderRequest("duplicate order"), Ct);
-        var second = await handler.HandleAsync(order.Id, new CancelOrderRequest("retried request"), Ct);
+        var first = await CancelHandler().HandleAsync(order.Id, new CancelOrderRequest("duplicate order"), Ct);
+        var second = await CancelHandler().HandleAsync(order.Id, new CancelOrderRequest("retried request"), Ct);
 
         Assert.True(first.IsSuccess);
         Assert.True(second.IsSuccess);
         Assert.Equal(OrderStatus.Cancelled, order.Status);
         Assert.Equal(_clock.GetUtcNow(), order.CancelledAt);
         Assert.Single(cancelled.GetMeasurementSnapshot());
+#if (UseKafka)
+        Assert.Equal([OrderPlaced.MessageType, OrderCancelled.MessageType], _publisher.Published.Select(e => e.Type));
+#endif
     }
 
     public void Dispose() => _services.Dispose();
 
     private static PlaceOrderRequest ValidRequest() =>
         new("cust-42", "EUR", [new("SKU-1", 2, 1_250), new("SKU-2", 1, 499)]);
+
+#if (UseKafka)
+    private PlaceOrderHandler PlaceHandler(FakeLogger<PlaceOrderHandler>? logger = null) =>
+        new(_store, _customers, _publisher, _clock, _metrics, logger ?? new FakeLogger<PlaceOrderHandler>());
+
+    private CancelOrderHandler CancelHandler() =>
+        new(_store, _publisher, _clock, _metrics, new FakeLogger<CancelOrderHandler>());
+#else
+    private PlaceOrderHandler PlaceHandler(FakeLogger<PlaceOrderHandler>? logger = null) =>
+        new(_store, _customers, _clock, _metrics, logger ?? new FakeLogger<PlaceOrderHandler>());
+
+    private CancelOrderHandler CancelHandler() =>
+        new(_store, _clock, _metrics, new FakeLogger<CancelOrderHandler>());
+#endif
 
     private MetricCollector<long> Collect(string instrument) =>
         new(_services.GetRequiredService<IMeterFactory>(), Telemetry.MeterName, instrument);
