@@ -50,6 +50,7 @@
     <!--#if (UsePostgres) -->
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.17.0" />
     <!--#endif -->
+    <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.5" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.3" />
   </ItemGroup>

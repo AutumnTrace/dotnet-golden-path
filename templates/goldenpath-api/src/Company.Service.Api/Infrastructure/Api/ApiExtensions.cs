@@ -36,13 +36,21 @@ public static class ApiExtensions
                 options.GroupNameFormat = "'v'VVV";
                 options.SubstituteApiVersionInUrl = true;
             })
+            .AddOpenApi(options =>
+            {
+                options.Document.AddDocumentTransformer((document, _, _) =>
+                {
+                    // A stable title: the default uses the host's application name, which differs under test.
+                    document.Info.Title = "Company.Service API";
+                    document.Info.Description = "Orders: place, read, list and cancel orders. Amounts are integer minor units of an ISO 4217 currency.";
+                    return Task.CompletedTask;
+                });
 #if (UseJwt)
-            .AddOpenApi(options => options.Document
-                .AddDocumentTransformer<BearerSecuritySchemeTransformer>()
-                .AddOperationTransformer<BearerSecuritySchemeTransformer>());
-#else
-            .AddOpenApi();
+                options.Document
+                    .AddDocumentTransformer<BearerSecuritySchemeTransformer>()
+                    .AddOperationTransformer<BearerSecuritySchemeTransformer>();
 #endif
+            });
 
         return services;
     }
