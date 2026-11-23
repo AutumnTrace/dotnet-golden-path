@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > [!NOTE]
-> Work in progress. The container image, Helm chart and generated CI land in the next release.
+> Work in progress. Documentation and the engineering handbook land next.
 
 ## Quick start
 

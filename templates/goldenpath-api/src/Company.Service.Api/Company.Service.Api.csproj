@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Local-only settings (stubs, development token key) never ship in a published image. -->
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Company.Service.UnitTests" />
     <InternalsVisibleTo Include="Company.Service.ApiTests" />
     <!--#if (UseIntegrationTests) -->

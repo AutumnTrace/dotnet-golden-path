@@ -1,0 +1,131 @@
+# Defaults are production-shaped: two replicas, autoscaling, a disruption budget, probes and a locked-down pod.
+# Override per environment with -f values-<env>.yaml or --set.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/your-org/company-service
+  # Defaults to the chart appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  # The service does not call the Kubernetes API, so it gets no token.
+  automountToken: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Kestrel listens here (ASPNETCORE_HTTP_PORTS in the image).
+containerPort: 8080
+
+# Non-secret settings, rendered into a ConfigMap and passed as environment variables.
+# Keys use the ASP.NET Core convention: Section__Key.
+config:
+  ASPNETCORE_ENVIRONMENT: Production
+  OTEL_SERVICE_NAME: company-service
+  CustomerDirectory__BaseAddress: http://customer-directory/
+#if (UsePostgres)
+  Database__Provider: Postgres
+  # Prefer running migrations as a deployment step; true is convenient for a first install.
+  Database__MigrateOnStartup: "false"
+#endif
+#if (UseKafka)
+  Messaging__Provider: Kafka
+  Messaging__BootstrapServers: kafka:9092
+#endif
+#if (UseOtlp)
+  # For example http://otel-collector.observability:4317. Empty disables the OTLP exporter.
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+#endif
+#if (UseJwt)
+  # Your identity provider, for example https://login.example.com/tenant/v2.0
+  Authentication__Schemes__Bearer__Authority: ""
+#endif
+
+# Name of an existing Secret whose keys become environment variables. Secrets never go in values files.
+#if (UsePostgres)
+# It must contain ConnectionStrings__Database.
+#endif
+#if (UseAppInsights)
+# Put APPLICATIONINSIGHTS_CONNECTION_STRING there to switch on the Azure Monitor exporter.
+#endif
+existingSecret: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    cpu: "1"
+    memory: 384Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+# Must exceed Shutdown:Timeout (25 s): readiness fails, traffic drains, in-flight requests finish.
+terminationGracePeriodSeconds: 35
+
+probes:
+  startup:
+    httpGet:
+      path: /health/live
+      port: http
+    periodSeconds: 2
+    failureThreshold: 30
+  liveness:
+    httpGet:
+      path: /health/live
+      port: http
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    httpGet:
+      path: /health/ready
+      port: http
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1654
+  runAsGroup: 1654
+  fsGroup: 1654
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Spread replicas across nodes so one node failure does not take the service down.
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway

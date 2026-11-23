@@ -21,6 +21,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Architecture tests (ArchUnitNET) that enforce slice independence, dependency direction, a framework-free domain and "only X may use library Y" rules, each with a positive control
 - OpenAPI contract snapshot test with an approved file per auth variant (`UPDATE_SNAPSHOTS=1` to accept a change)
 - Testcontainers integration tests (`Category=Integration`) for PostgreSQL and Kafka, and a shared `*.Testing` kit for API and integration tests
+- Multi-stage Dockerfile on the chiseled, non-root ASP.NET runtime image; runs with a read-only root file system
+- `docker-compose.yml` with the service, its chosen infrastructure and the Aspire dashboard as OTLP endpoint
+- Helm chart: Deployment (startup, liveness and readiness probes, resource requests and limits, read-only root file system, dropped capabilities, seccomp), Service, HPA, PDB, ConfigMap, ServiceAccount without a token, and a `helm test` readiness check
+- Generated GitHub Actions CI (build, tests, coverage summary, image, compose validation, Helm lint, kubeconform) and Dependabot configuration
+- `POST /dev/tokens` for local JWTs, available only in the Development environment
 - Unit and API tests in the generated service; template tests and a CI matrix in this repository
+- CI here: every combination builds and tests; a pairwise set also runs integration tests, builds the image, runs the compose stack end to end and validates the chart; the default output is deployed to a kind cluster with `helm install --wait`
+- Release workflow that attaches the template package to the GitHub release
 
 [Unreleased]: https://github.com/AutumnTrace/dotnet-golden-path/commits/main

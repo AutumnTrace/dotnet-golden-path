@@ -143,6 +143,33 @@ public class InstantiationTests(TemplateFixture template)
     }
 
     [Theory]
+    [MemberData(nameof(Combinations))]
+    public async Task The_ops_kit_is_named_after_the_service_and_matches_the_options(string arguments)
+    {
+        var options = Parse(arguments);
+        var service = await GenerateAsync(arguments);
+        var chart = Assert.Single(service.Files, f => f.StartsWith("deploy/helm/", StringComparison.Ordinal) && f.EndsWith("/Chart.yaml", StringComparison.Ordinal));
+        var slug = chart.Split('/')[2];
+        Assert.Matches("^[a-z0-9]+(-[a-z0-9]+)*$", slug);
+        var compose = service.Read("docker-compose.yml");
+        var values = service.Read($"deploy/helm/{slug}/values.yaml");
+
+        Assert.True(service.Exists("Dockerfile"));
+        Assert.True(service.Exists(".github/workflows/ci.yml"));
+        Assert.Contains($"name: {slug}", service.Read(chart), StringComparison.Ordinal);
+        Assert.Contains($"name: {slug}", compose, StringComparison.Ordinal);
+        Assert.Contains($"ENTRYPOINT [\"dotnet\", \"{options.ServiceName}.Api.dll\"]", service.Read("Dockerfile"), StringComparison.Ordinal);
+
+        Assert.Equal(options.UsesPostgres, compose.Contains("  postgres:", StringComparison.Ordinal));
+        Assert.Equal(options.UsesKafka, compose.Contains("  kafka:", StringComparison.Ordinal));
+        Assert.Equal(options.UsesOtlp, compose.Contains("  aspire-dashboard:", StringComparison.Ordinal));
+        Assert.Equal(options.UsesJwt, compose.Contains("DevelopmentTokens", StringComparison.Ordinal));
+        Assert.Equal(options.UsesPostgres, values.Contains("Database__Provider", StringComparison.Ordinal));
+        Assert.Equal(options.UsesKafka, values.Contains("Messaging__BootstrapServers", StringComparison.Ordinal));
+        Assert.Equal(options.HasIntegrationTests, service.Read(".github/workflows/ci.yml").Contains("Category=Integration", StringComparison.Ordinal));
+    }
+
+    [Theory]
     [InlineData("Orders", "Orders.Api", "orders")]
     [InlineData("Wallet.Gateway", "Wallet.Gateway.Api", "wallet-gateway")]
     [InlineData("PaymentRouting", "PaymentRouting.Api", "payment-routing")]
@@ -153,6 +180,8 @@ public class InstantiationTests(TemplateFixture template)
         Assert.True(service.Exists($"src/{project}/{project}.csproj"));
         Assert.Contains($"namespace {project}.Features.Orders;", service.Read($"src/{project}/Features/Orders/OrdersModule.cs"), StringComparison.Ordinal);
         Assert.Contains($"DefaultServiceName = \"{slug}\"", service.Read($"src/{project}/Infrastructure/Observability/Telemetry.cs"), StringComparison.Ordinal);
+        Assert.True(service.Exists($"deploy/helm/{slug}/values.yaml"));
+        Assert.Contains($"name: {slug}", service.Read("docker-compose.yml"), StringComparison.Ordinal);
     }
 
     [Fact]

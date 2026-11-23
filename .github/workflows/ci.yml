@@ -15,6 +15,8 @@ concurrency:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  KUBECONFORM_VERSION: v0.8.0
+  ACTIONLINT_VERSION: 1.7.12
 
 jobs:
   template:
@@ -48,7 +50,7 @@ jobs:
           name: template-test-results
           path: tests/**/TestResults/*.trx
 
-  # Every one of the 24 combinations must build with zero warnings and pass its unit and API tests.
+  # Every one of the 24 combinations must build with zero warnings and pass its unit, API and architecture tests.
   combinations:
     name: All combinations (${{ matrix.database }} db, ${{ matrix.messaging }} messaging)
     needs: template
@@ -73,7 +75,7 @@ jobs:
       - name: Install the packed template
         run: dotnet new install artifacts/GoldenPath.Templates.*.nupkg
 
-      - name: Build and unit-test observability x auth
+      - name: Build and test observability x auth
         run: |
           set -euo pipefail
           for observability in otlp appinsights both; do
@@ -89,7 +91,7 @@ jobs:
           done
 
   # A pairwise-covering set (every pair of option values appears at least once) plus the "everything on"
-  # combination, each taken through the whole pipeline: build, unit, API and Testcontainers integration tests.
+  # combination, each taken through the whole pipeline a team would run.
   service:
     name: Service (${{ matrix.name }})
     needs: template
@@ -131,7 +133,7 @@ jobs:
         working-directory: ${{ env.SERVICE_DIR }}
         run: dotnet build -c Release
 
-      - name: Unit and API tests
+      - name: Unit, API and architecture tests
         working-directory: ${{ env.SERVICE_DIR }}
         run: dotnet test -c Release --no-build --filter "Category!=Integration" --logger "trx;LogFileName=unit.trx"
 
@@ -140,8 +142,113 @@ jobs:
         working-directory: ${{ env.SERVICE_DIR }}
         run: dotnet test -c Release --no-build --filter "Category=Integration" --logger "trx;LogFileName=integration.trx"
 
+      - name: Lint the generated GitHub Actions workflow
+        run: |
+          curl -sSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" | tar xz actionlint
+          ./actionlint "$SERVICE_DIR/.github/workflows/ci.yml"
+
+      - name: Build the container image
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: docker build -t orders:ci .
+
+      - name: Validate docker-compose.yml
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: docker compose config --quiet
+
+      - uses: azure/setup-helm@v5
+
+      - name: Lint the Helm chart
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: helm lint deploy/helm/orders --strict
+
+      - name: Validate rendered manifests (kubeconform)
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: |
+          curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" | tar xz kubeconform
+          helm template orders deploy/helm/orders | ./kubeconform -strict -summary -kubernetes-version 1.33.0
+
+      - name: Run the compose stack end to end
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: |
+          docker compose up -d --build --wait --wait-timeout 300
+          "$GITHUB_WORKSPACE/eng/smoke-test.sh" http://localhost:8080 ${{ matrix.auth }}
+
+      - name: Compose logs
+        if: failure()
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: docker compose logs --no-color
+
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: service-test-results-${{ matrix.name }}
           path: ${{ env.SERVICE_DIR }}/tests/**/TestResults/*.trx
+
+  # The default template output, deployed with its own Helm chart to a real (kind) Kubernetes cluster.
+  kubernetes:
+    name: Deploy to Kubernetes (kind)
+    needs: template
+    runs-on: ubuntu-latest
+    env:
+      SERVICE_DIR: /home/runner/work/svc
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: template-package
+          path: artifacts
+
+      - name: Generate the service with default options
+        run: |
+          dotnet new install artifacts/GoldenPath.Templates.*.nupkg
+          dotnet new goldenpath-api -n Orders -o "$SERVICE_DIR"
+
+      - name: Build the image
+        run: docker build -t orders:kind "$SERVICE_DIR"
+
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: golden-path
+
+      - uses: azure/setup-helm@v5
+
+      - name: Load the image and start PostgreSQL
+        run: |
+          kind load docker-image orders:kind --name golden-path
+          kubectl apply -f eng/kind/postgres.yaml
+          kubectl rollout status deployment/postgres --timeout=180s
+          kubectl create secret generic orders-secrets \
+            --from-literal=ConnectionStrings__Database='Host=postgres;Database=orders;Username=orders;Password=orders'
+
+      - name: helm install --wait
+        run: |
+          helm install orders "$SERVICE_DIR/deploy/helm/orders" \
+            --set image.repository=orders \
+            --set image.tag=kind \
+            --set existingSecret=orders-secrets \
+            --set config.Database__MigrateOnStartup=true \
+            --set config.Authentication__Schemes__Bearer__Authority=https://identity.example.test/ \
+            --wait --timeout 5m
+
+      - name: helm test (readiness from inside the cluster)
+        run: helm test orders --logs
+
+      - name: Probe through a port-forward
+        run: |
+          kubectl port-forward service/orders 8080:80 &
+          sleep 3
+          curl -fsS http://localhost:8080/health/ready | tee ready.json
+          grep -q '"name":"database","status":"Healthy"' ready.json
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/v1/orders)" = 401
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl get pods -o wide
+          kubectl describe pods -l app.kubernetes.io/instance=orders
+          kubectl logs -l app.kubernetes.io/instance=orders --tail=200 --all-containers
