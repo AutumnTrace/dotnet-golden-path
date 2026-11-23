@@ -27,6 +27,15 @@ public static class OrderErrors
     public static Error InvalidLine(string sku) =>
         Error.Unprocessable("orders.invalid_line", $"Line '{sku}' needs a positive quantity and a non-negative price.");
 
+    public static Error CustomerNotFound(string customerId) =>
+        Error.Unprocessable("orders.customer_not_found", $"Customer '{customerId}' does not exist.");
+
+    public static Error CustomerBlocked(string customerId) =>
+        Error.Unprocessable("orders.customer_blocked", $"Customer '{customerId}' is blocked from placing orders.");
+
+    public static readonly Error CustomerDirectoryUnavailable =
+        Error.Unavailable("orders.customer_directory_unavailable", "Could not verify the customer right now. Retry shortly.");
+
     public static Error InvalidState(Guid id, OrderStatus status, string action) =>
         Error.Conflict(
             "orders.invalid_state",

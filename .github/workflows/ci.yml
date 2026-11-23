@@ -49,19 +49,14 @@ jobs:
           path: tests/**/TestResults/*.trx
 
   service:
-    name: Service (${{ matrix.name }})
+    name: Service (${{ matrix.observability }}, ${{ matrix.auth }})
     needs: template
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: otlp
-            args: --observability otlp
-          - name: appinsights
-            args: --observability appinsights
-          - name: both
-            args: --observability both
+        observability: [otlp, appinsights, both]
+        auth: [jwt, none]
     steps:
       - uses: actions/checkout@v7
 
@@ -78,7 +73,7 @@ jobs:
         run: dotnet new install artifacts/GoldenPath.Templates.*.nupkg
 
       - name: Generate the service
-        run: dotnet new goldenpath-api -n Orders -o "$RUNNER_TEMP/svc" ${{ matrix.args }}
+        run: dotnet new goldenpath-api -n Orders -o "$RUNNER_TEMP/svc" --observability ${{ matrix.observability }} --auth ${{ matrix.auth }}
 
       - name: Build
         working-directory: ${{ runner.temp }}/svc
@@ -91,5 +86,5 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: service-test-results-${{ matrix.name }}
+          name: service-test-results-${{ matrix.observability }}-${{ matrix.auth }}
           path: ${{ runner.temp }}/svc/tests/**/TestResults/*.trx

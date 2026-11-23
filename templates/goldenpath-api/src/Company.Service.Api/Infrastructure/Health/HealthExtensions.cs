@@ -17,7 +17,7 @@ public static class HealthExtensions
     /// </summary>
     public static IEndpointRouteBuilder MapHealthEndpoints(this IEndpointRouteBuilder app)
     {
-        var probes = app.MapGroup("/health").ExcludeFromDescription();
+        var probes = app.MapGroup("/health").ExcludeFromDescription().AllowAnonymous();
 
         probes.MapHealthChecks("/live", new HealthCheckOptions
         {

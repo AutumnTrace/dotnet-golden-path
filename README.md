@@ -1,13 +1,13 @@
 # dotnet-golden-path
 
-**A `dotnet new` template for production .NET 10 services: OpenTelemetry, Serilog, health probes and tests, ready on day one.**
+**A `dotnet new` template for production .NET 10 services: OpenTelemetry, Serilog, resilience, health probes and tests, ready on day one.**
 
 [![CI](https://github.com/AutumnTrace/dotnet-golden-path/actions/workflows/ci.yml/badge.svg)](https://github.com/AutumnTrace/dotnet-golden-path/actions/workflows/ci.yml)
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > [!NOTE]
-> Work in progress. Persistence, messaging, auth, containers and the Helm chart land in the next releases.
+> Work in progress. Persistence, messaging, containers and the Helm chart land in the next releases.
 
 ## Quick start
 
@@ -24,6 +24,7 @@ dotnet run --project src/Orders.Api
 | Option | Choices | Default | What it changes |
 |---|---|---|---|
 | `--observability` | `otlp`, `appinsights`, `both` | `otlp` | Telemetry exporters. Each one switches on only when its endpoint (`OTEL_EXPORTER_OTLP_ENDPOINT`) or connection string (`APPLICATIONINSIGHTS_CONNECTION_STRING`) is set. |
+| `--auth` | `jwt`, `none` | `jwt` | JWT bearer auth with scope policies and a secure-by-default fallback policy, or no auth for services behind an authenticating gateway. |
 
 ## Verify the template locally
 
