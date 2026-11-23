@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Company.Service.Api.Features.Orders;
 using Company.Service.Api.Features.Orders.Domain;
+using Company.Service.Testing;
 
 namespace Company.Service.ApiTests;
 
@@ -114,9 +115,14 @@ public class OrdersApiTests(ServiceFactory factory) : IClassFixture<ServiceFacto
         var first = await _client.GetFromJsonAsync<OrderPage>($"/v1/orders?customerId={customer}&limit=2", ApiClient.Json, Ct);
         var second = await _client.GetFromJsonAsync<OrderPage>($"/v1/orders?customerId={customer}&limit=2&after={first!.NextCursor}", ApiClient.Json, Ct);
 
-        Assert.Equal([placed[2].Id, placed[1].Id], first.Items.Select(o => o.Id));
-        Assert.Equal([placed[0].Id], second!.Items.Select(o => o.Id));
+        // Ids are UUIDv7: ordered by time to the millisecond, so assert the keyset contract rather than
+        // the exact order of orders placed within the same millisecond.
+        var all = first.Items.Concat(second!.Items).Select(o => o.Id).ToList();
+        Assert.Equal(2, first.Items.Count);
+        Assert.Single(second.Items);
         Assert.Null(second.NextCursor);
+        Assert.Equal(placed.Select(o => o.Id).Order(), all.Order());
+        Assert.Equal(all.OrderDescending(), all);
     }
 
     [Theory]

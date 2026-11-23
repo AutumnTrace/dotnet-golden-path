@@ -1,13 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
-    <PackageReference Include="OpenTelemetry.Exporter.InMemory" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Company.Service.Api\Company.Service.Api.csproj" />
+    <ProjectReference Include="..\Company.Service.Testing\Company.Service.Testing.csproj" />
   </ItemGroup>
 
 </Project>

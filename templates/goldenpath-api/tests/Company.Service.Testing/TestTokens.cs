@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Company.Service.ApiTests;
+namespace Company.Service.Testing;
 
 /// <summary>Mints tokens the way an identity provider would, signed with a per-run key.</summary>
 public static class TestTokens

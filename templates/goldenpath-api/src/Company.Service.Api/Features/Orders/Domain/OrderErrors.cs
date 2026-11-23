@@ -36,6 +36,11 @@ public static class OrderErrors
     public static readonly Error CustomerDirectoryUnavailable =
         Error.Unavailable("orders.customer_directory_unavailable", "Could not verify the customer right now. Retry shortly.");
 
+    public static Error PaymentMismatch(Guid id, long expectedMinor, string expectedCurrency, long actualMinor, string actualCurrency) =>
+        Error.Unprocessable(
+            "orders.payment_mismatch",
+            string.Create(CultureInfo.InvariantCulture, $"Order {id} totals {expectedMinor} {expectedCurrency} but the payment was {actualMinor} {actualCurrency}."));
+
     public static Error InvalidState(Guid id, OrderStatus status, string action) =>
         Error.Conflict(
             "orders.invalid_state",

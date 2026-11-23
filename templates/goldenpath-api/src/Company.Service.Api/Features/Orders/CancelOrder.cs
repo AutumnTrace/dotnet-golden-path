@@ -1,6 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using Company.Service.Api.Features.Orders.Domain;
 using Company.Service.Api.Infrastructure.Errors;
+#if (UseKafka)
+using Company.Service.Api.Infrastructure.Messaging;
+#endif
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Company.Service.Api.Features.Orders;
@@ -9,6 +12,9 @@ public sealed record CancelOrderRequest([Required, StringLength(200, MinimumLeng
 
 internal sealed class CancelOrderHandler(
     IOrderStore store,
+#if (UseKafka)
+    IMessagePublisher publisher,
+#endif
     TimeProvider clock,
     OrdersMetrics metrics,
     ILogger<CancelOrderHandler> logger)
@@ -35,6 +41,14 @@ internal sealed class CancelOrderHandler(
         }
 
         await store.UpdateAsync(order, cancellationToken);
+#if (UseKafka)
+        await publisher.PublishAsync(
+            OrderTopics.OrderEvents,
+            order.Id.ToString(),
+            new OrderCancelled(order.Id, request.Reason, order.CancelledAt!.Value),
+            order.CancelledAt.Value,
+            cancellationToken);
+#endif
         metrics.Cancelled();
         OrdersLog.OrderCancelled(logger, order.Id);
         return order;

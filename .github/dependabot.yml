@@ -15,6 +15,23 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    # The template targets the .NET 10 LTS line. Framework-aligned packages move to the next major together
+    # with the TargetFramework, in one deliberate change, not one package at a time.
+    ignore:
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Npgsql*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "EFCore.NamingConventions"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Serilog.AspNetCore"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotnet-ef"
+        update-types: ["version-update:semver-major"]
     groups:
       opentelemetry:
         patterns: ["OpenTelemetry*", "Azure.Monitor.*", "Npgsql.OpenTelemetry"]

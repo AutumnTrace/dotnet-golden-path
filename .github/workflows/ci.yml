@@ -30,7 +30,7 @@ jobs:
       - name: Build
         run: dotnet build -c Release
 
-      - name: Template tests
+      - name: Template tests (every combination, generated files only)
         run: dotnet test -c Release --no-build --logger "trx;LogFileName=template-tests.trx"
 
       - name: Pack
@@ -48,15 +48,67 @@ jobs:
           name: template-test-results
           path: tests/**/TestResults/*.trx
 
-  service:
-    name: Service (${{ matrix.observability }}, ${{ matrix.auth }})
+  # Every one of the 24 combinations must build with zero warnings and pass its unit and API tests.
+  combinations:
+    name: All combinations (${{ matrix.database }} db, ${{ matrix.messaging }} messaging)
     needs: template
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        observability: [otlp, appinsights, both]
-        auth: [jwt, none]
+        database: [postgres, none]
+        messaging: [kafka, none]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: template-package
+          path: artifacts
+
+      - name: Install the packed template
+        run: dotnet new install artifacts/GoldenPath.Templates.*.nupkg
+
+      - name: Build and unit-test observability x auth
+        run: |
+          set -euo pipefail
+          for observability in otlp appinsights both; do
+            for auth in jwt none; do
+              args="--database ${{ matrix.database }} --messaging ${{ matrix.messaging }} --observability $observability --auth $auth"
+              dir="$RUNNER_TEMP/svc-$observability-$auth"
+              echo "::group::$args"
+              dotnet new goldenpath-api -n Orders -o "$dir" $args
+              dotnet build "$dir" -c Release
+              dotnet test "$dir" -c Release --no-build --filter "Category!=Integration"
+              echo "::endgroup::"
+            done
+          done
+
+  # A pairwise-covering set (every pair of option values appears at least once) plus the "everything on"
+  # combination, each taken through the whole pipeline: build, unit, API and Testcontainers integration tests.
+  service:
+    name: Service (${{ matrix.name }})
+    needs: template
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: full, database: postgres, messaging: kafka, observability: both, auth: jwt }
+          - { name: p-k-otlp-jwt, database: postgres, messaging: kafka, observability: otlp, auth: jwt }
+          - { name: x-x-otlp-none, database: none, messaging: none, observability: otlp, auth: none }
+          - { name: p-x-ai-none, database: postgres, messaging: none, observability: appinsights, auth: none }
+          - { name: x-k-ai-jwt, database: none, messaging: kafka, observability: appinsights, auth: jwt }
+          - { name: p-x-both-jwt, database: postgres, messaging: none, observability: both, auth: jwt }
+          - { name: x-k-both-none, database: none, messaging: kafka, observability: both, auth: none }
+    env:
+      # Outside the checkout, so the generated service does not inherit this repo's Directory.Build.props.
+      SERVICE_DIR: /home/runner/work/svc
+      TEMPLATE_ARGS: --database ${{ matrix.database }} --messaging ${{ matrix.messaging }} --observability ${{ matrix.observability }} --auth ${{ matrix.auth }}
     steps:
       - uses: actions/checkout@v7
 
@@ -73,18 +125,23 @@ jobs:
         run: dotnet new install artifacts/GoldenPath.Templates.*.nupkg
 
       - name: Generate the service
-        run: dotnet new goldenpath-api -n Orders -o "$RUNNER_TEMP/svc" --observability ${{ matrix.observability }} --auth ${{ matrix.auth }}
+        run: dotnet new goldenpath-api -n Orders -o "$SERVICE_DIR" $TEMPLATE_ARGS
 
       - name: Build
-        working-directory: ${{ runner.temp }}/svc
+        working-directory: ${{ env.SERVICE_DIR }}
         run: dotnet build -c Release
 
       - name: Unit and API tests
-        working-directory: ${{ runner.temp }}/svc
-        run: dotnet test -c Release --no-build --filter "Category!=Integration" --logger "trx;LogFileName=results.trx"
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: dotnet test -c Release --no-build --filter "Category!=Integration" --logger "trx;LogFileName=unit.trx"
+
+      - name: Integration tests (Testcontainers)
+        if: matrix.database != 'none' || matrix.messaging != 'none'
+        working-directory: ${{ env.SERVICE_DIR }}
+        run: dotnet test -c Release --no-build --filter "Category=Integration" --logger "trx;LogFileName=integration.trx"
 
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: service-test-results-${{ matrix.observability }}-${{ matrix.auth }}
-          path: ${{ runner.temp }}/svc/tests/**/TestResults/*.trx
+          name: service-test-results-${{ matrix.name }}
+          path: ${{ env.SERVICE_DIR }}/tests/**/TestResults/*.trx

@@ -11,11 +11,12 @@ using Microsoft.Extensions.DependencyInjection;
 #endif
 using OpenTelemetry.Trace;
 
-namespace Company.Service.ApiTests;
+namespace Company.Service.Testing;
 
 /// <summary>
 /// Hosts the real application in memory. Only the edges are swapped: configuration for the test environment,
-/// the customer directory stub, test signing keys and an in-memory trace exporter so tests can assert on spans.
+/// in-memory infrastructure (integration tests override it with containers), the customer directory stub,
+/// test signing keys and an in-memory trace exporter so tests can assert on spans.
 /// </summary>
 public class ServiceFactory : WebApplicationFactory<Program>
 {
@@ -23,12 +24,20 @@ public class ServiceFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        ArgumentNullException.ThrowIfNull(builder);
+
         builder.UseEnvironment("Testing");
         builder.UseSetting("Serilog:MinimumLevel:Default", "Warning");
         builder.UseSetting("Observability:LogFormat", "Text");
         builder.UseSetting("CustomerDirectory:UseStub", "true");
         builder.UseSetting("RateLimiting:PermitLimit", "1000");
         builder.UseSetting("Shutdown:DrainDelay", "00:00:00");
+#if (UsePostgres)
+        builder.UseSetting("Database:Provider", "InMemory");
+#endif
+#if (UseKafka)
+        builder.UseSetting("Messaging:Provider", "InMemory");
+#endif
 
         builder.ConfigureTestServices(services =>
         {
@@ -48,6 +57,7 @@ public class ServiceFactory : WebApplicationFactory<Program>
     /// <summary>Clients get a token with every scope by default; auth tests replace or remove it.</summary>
     protected override void ConfigureClient(HttpClient client)
     {
+        ArgumentNullException.ThrowIfNull(client);
         base.ConfigureClient(client);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer", TestTokens.Create("test-client", ["orders:read", "orders:write"]));
@@ -85,7 +95,7 @@ public sealed class ExportedCollection<T> : ICollection<T>
     /// <summary>Spans end slightly after the response is sent, so poll briefly instead of asserting at once.</summary>
     public async Task<T> WaitForAsync(Func<T, bool> predicate, CancellationToken cancellationToken)
     {
-        var deadline = TimeProvider.System.GetTimestamp() + TimeProvider.System.TimestampFrequency * 5;
+        var deadline = TimeProvider.System.GetTimestamp() + (TimeProvider.System.TimestampFrequency * 5);
         while (TimeProvider.System.GetTimestamp() < deadline)
         {
             var match = Snapshot().FirstOrDefault(predicate);

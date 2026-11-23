@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Needs Docker. Every test class carries [Trait("Category", "Integration")], so the filter
+       Category=Integration runs only these and Category!=Integration skips them. -->
+
+  <ItemGroup>
+    <!--#if (UseKafka) -->
+    <PackageReference Include="Testcontainers.Kafka" />
+    <!--#endif -->
+    <!--#if (UsePostgres) -->
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <!--#endif -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Company.Service.Testing\Company.Service.Testing.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -9,6 +9,8 @@ namespace GoldenPath.Templates.Tests;
 public sealed class TemplateFixture : IAsyncLifetime
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "goldenpath-tests", Guid.NewGuid().ToString("N"));
+    private readonly Dictionary<string, Task<string>> _generated = new(StringComparer.Ordinal);
+    private readonly Lock _gate = new();
 
     public static string RepositoryRoot { get; } = FindRepositoryRoot();
 
@@ -30,6 +32,23 @@ public sealed class TemplateFixture : IAsyncLifetime
             _root,
             cancellationToken);
         return output;
+    }
+
+    /// <summary>Instantiates a combination the first time it is asked for and reuses the output afterwards.</summary>
+    public Task<string> InstantiateOnceAsync(string name, IEnumerable<string> arguments, CancellationToken cancellationToken)
+    {
+        var argumentList = arguments.ToList();
+        var key = $"{name} {string.Join(' ', argumentList)}";
+        lock (_gate)
+        {
+            if (!_generated.TryGetValue(key, out var output) || output.IsFaulted || output.IsCanceled)
+            {
+                output = InstantiateAsync(name, argumentList, cancellationToken);
+                _generated[key] = output;
+            }
+
+            return output;
+        }
     }
 
     public ValueTask DisposeAsync()

@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Company.Service.Testing;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Company.Service.ApiTests;
