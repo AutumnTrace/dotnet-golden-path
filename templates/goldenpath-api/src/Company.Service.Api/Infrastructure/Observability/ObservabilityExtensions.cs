@@ -1,6 +1,7 @@
 #if (UseAppInsights)
 using Azure.Monitor.OpenTelemetry.Exporter;
 #endif
+using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -29,7 +30,6 @@ public static class ObservabilityExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        var settings = section.Get<ObservabilityOptions>() ?? new ObservabilityOptions();
         var serviceName = builder.Configuration["OTEL_SERVICE_NAME"] is { Length: > 0 } configured
             ? configured
             : Telemetry.DefaultServiceName;
@@ -46,6 +46,7 @@ public static class ObservabilityExtensions
         builder.Services.AddSerilog(
             (services, logger) =>
             {
+                var settings = services.GetRequiredService<IOptions<ObservabilityOptions>>().Value;
                 logger
                     .ReadFrom.Configuration(builder.Configuration)
                     .Enrich.FromLogContext()
@@ -71,7 +72,8 @@ public static class ObservabilityExtensions
                 .AddService(serviceName, serviceVersion: Telemetry.ServiceVersion, serviceInstanceId: Environment.MachineName)
                 .AddAttributes([new("deployment.environment.name", environment)]))
             .WithTracing(tracing => tracing
-                .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(settings.TraceSampleRatio)))
+                .SetSampler(services => new ParentBasedSampler(new TraceIdRatioBasedSampler(
+                    services.GetRequiredService<IOptions<ObservabilityOptions>>().Value.TraceSampleRatio)))
                 .AddSource(Telemetry.ActivitySourceName)
                 .AddAspNetCoreInstrumentation(options => options.Filter = context => !IsProbe(context.Request.Path))
                 .AddHttpClientInstrumentation())

@@ -1,7 +1,12 @@
 {
   "$schema": "http://json.schemastore.org/template",
   "author": "Mina Rotari",
-  "classifications": ["Web", "WebAPI", "Service", "Cloud"],
+  "classifications": [
+    "Web",
+    "WebAPI",
+    "Service",
+    "Cloud"
+  ],
   "identity": "GoldenPath.Api.CSharp",
   "groupIdentity": "GoldenPath.Api",
   "name": "Golden path ASP.NET Core service",
@@ -20,9 +25,18 @@
       "datatype": "choice",
       "description": "Where telemetry (traces, metrics and logs) is exported. Exporters switch on only when their endpoint or connection string is configured.",
       "choices": [
-        { "choice": "otlp", "description": "OTLP exporter (any OpenTelemetry collector, the Aspire dashboard, Grafana, Jaeger, ...)" },
-        { "choice": "appinsights", "description": "Azure Monitor exporter (Application Insights)" },
-        { "choice": "both", "description": "OTLP and Azure Monitor side by side" }
+        {
+          "choice": "otlp",
+          "description": "OTLP exporter (any OpenTelemetry collector, the Aspire dashboard, Grafana, Jaeger, ...)"
+        },
+        {
+          "choice": "appinsights",
+          "description": "Azure Monitor exporter (Application Insights)"
+        },
+        {
+          "choice": "both",
+          "description": "OTLP and Azure Monitor side by side"
+        }
       ],
       "defaultValue": "otlp"
     },
@@ -33,6 +47,26 @@
     "UseAppInsights": {
       "type": "computed",
       "value": "(observability == \"appinsights\" || observability == \"both\")"
+    },
+    "auth": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "How callers authenticate. With jwt every endpoint requires a bearer token unless it opts out explicitly.",
+      "choices": [
+        {
+          "choice": "jwt",
+          "description": "JWT bearer tokens from your identity provider (dotnet user-jwts locally), scope-based policies"
+        },
+        {
+          "choice": "none",
+          "description": "No authentication (internal services behind a gateway that authenticates)"
+        }
+      ],
+      "defaultValue": "jwt"
+    },
+    "UseJwt": {
+      "type": "computed",
+      "value": "(auth == \"jwt\")"
     },
     "serviceSlug": {
       "type": "derived",
@@ -45,7 +79,10 @@
   "forms": {
     "slug": {
       "identifier": "chain",
-      "steps": ["nonAlphanumericToDash", "kebab"]
+      "steps": [
+        "nonAlphanumericToDash",
+        "kebab"
+      ]
     },
     "nonAlphanumericToDash": {
       "identifier": "replace",
@@ -68,10 +105,23 @@
         "**/*.received.*",
         "**/TestResults/**",
         "**/*.user"
+      ],
+      "modifiers": [
+        {
+          "condition": "(!UseJwt)",
+          "exclude": [
+            "src/Company.Service.Api/Infrastructure/Security/**",
+            "tests/Company.Service.ApiTests/AuthApiTests.cs",
+            "tests/Company.Service.ApiTests/TestTokens.cs",
+            "tests/Company.Service.UnitTests/Infrastructure/AuthScopeTests.cs"
+          ]
+        }
       ]
     }
   ],
   "primaryOutputs": [
-    { "path": "Company.Service.slnx" }
+    {
+      "path": "Company.Service.slnx"
+    }
   ]
 }

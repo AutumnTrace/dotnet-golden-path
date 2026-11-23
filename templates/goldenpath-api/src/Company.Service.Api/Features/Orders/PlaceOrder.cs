@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using Company.Service.Api.Features.Orders.Domain;
 using Company.Service.Api.Infrastructure.Errors;
+using Company.Service.Api.Integrations.CustomerDirectory;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Company.Service.Api.Features.Orders;
@@ -19,6 +20,7 @@ public sealed record PlaceOrderLineRequest(
 
 internal sealed class PlaceOrderHandler(
     IOrderStore store,
+    ICustomerDirectory customers,
     TimeProvider clock,
     OrdersMetrics metrics,
     ILogger<PlaceOrderHandler> logger)
@@ -33,6 +35,20 @@ internal sealed class PlaceOrderHandler(
         {
             OrdersLog.OrderRejected(logger, placed.Error.Code);
             return placed.Error;
+        }
+
+        // Local rules first (cheap, no I/O), then the remote check.
+        var customerCheck = await customers.GetStatusAsync(request.CustomerId, cancellationToken) switch
+        {
+            CustomerStatus.Active => null,
+            CustomerStatus.Blocked => OrderErrors.CustomerBlocked(request.CustomerId),
+            CustomerStatus.NotFound => OrderErrors.CustomerNotFound(request.CustomerId),
+            _ => OrderErrors.CustomerDirectoryUnavailable,
+        };
+        if (customerCheck is not null)
+        {
+            OrdersLog.OrderRejected(logger, customerCheck.Code);
+            return customerCheck;
         }
 
         var order = placed.Value;
@@ -53,7 +69,8 @@ internal static class PlaceOrderEndpoint
             .WithSummary("Place an order")
             .WithDescription("Validates the request, applies the order rules and stores the order. Amounts are integer minor units.")
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
     private static async Task<Results<Created<OrderResponse>, ProblemHttpResult>> HandleAsync(
         PlaceOrderRequest request,

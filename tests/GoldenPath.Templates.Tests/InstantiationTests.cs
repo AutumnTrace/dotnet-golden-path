@@ -70,6 +70,19 @@ public class InstantiationTests(TemplateFixture template)
     }
 
     [Theory]
+    [MemberData(nameof(Combinations))]
+    public async Task Auth_code_exists_only_with_the_jwt_option(string arguments)
+    {
+        var options = Parse(arguments);
+        var service = await GenerateAsync(arguments);
+
+        Assert.Equal(options.UsesJwt, service.Exists($"src/{options.ServiceName}.Api/Infrastructure/Security/AuthExtensions.cs"));
+        Assert.Equal(options.UsesJwt, service.FilesContaining("Microsoft.AspNetCore.Authentication.JwtBearer").Count > 0);
+        Assert.Equal(options.UsesJwt, service.FilesContaining("RequireAuthorization").Count > 0);
+        Assert.Equal(options.UsesJwt, service.FilesContaining("\"Authentication\"").Count > 0);
+    }
+
+    [Theory]
     [InlineData("Orders", "Orders.Api", "orders")]
     [InlineData("Wallet.Gateway", "Wallet.Gateway.Api", "wallet-gateway")]
     [InlineData("PaymentRouting", "PaymentRouting.Api", "payment-routing")]

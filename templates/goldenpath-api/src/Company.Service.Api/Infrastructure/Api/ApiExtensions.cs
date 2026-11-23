@@ -1,6 +1,9 @@
 using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Company.Service.Api.Infrastructure.Errors;
+#if (UseJwt)
+using Company.Service.Api.Infrastructure.Security;
+#endif
 
 namespace Company.Service.Api.Infrastructure.Api;
 
@@ -33,7 +36,13 @@ public static class ApiExtensions
                 options.GroupNameFormat = "'v'VVV";
                 options.SubstituteApiVersionInUrl = true;
             })
+#if (UseJwt)
+            .AddOpenApi(options => options.Document
+                .AddDocumentTransformer<BearerSecuritySchemeTransformer>()
+                .AddOperationTransformer<BearerSecuritySchemeTransformer>());
+#else
             .AddOpenApi();
+#endif
 
         return services;
     }
@@ -41,7 +50,7 @@ public static class ApiExtensions
     /// <summary>Serves one OpenAPI document per API version, e.g. <c>/openapi/v1.json</c>.</summary>
     public static IEndpointRouteBuilder MapApiDocuments(this IEndpointRouteBuilder app)
     {
-        app.MapOpenApi().WithDocumentPerVersion();
+        app.MapOpenApi().WithDocumentPerVersion().AllowAnonymous();
         return app;
     }
 }

@@ -1,14 +1,21 @@
 using System.Diagnostics;
+#if (UseJwt)
+using System.Net.Http.Headers;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+#endif
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+#if (UseJwt)
+using Microsoft.Extensions.DependencyInjection;
+#endif
 using OpenTelemetry.Trace;
 
 namespace Company.Service.ApiTests;
 
 /// <summary>
-/// Hosts the real application in memory. Only the edges are swapped: configuration for the test environment
-/// and an in-memory trace exporter so tests can assert on spans.
+/// Hosts the real application in memory. Only the edges are swapped: configuration for the test environment,
+/// the customer directory stub, test signing keys and an in-memory trace exporter so tests can assert on spans.
 /// </summary>
 public class ServiceFactory : WebApplicationFactory<Program>
 {
@@ -19,10 +26,33 @@ public class ServiceFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.UseSetting("Serilog:MinimumLevel:Default", "Warning");
         builder.UseSetting("Observability:LogFormat", "Text");
+        builder.UseSetting("CustomerDirectory:UseStub", "true");
+        builder.UseSetting("RateLimiting:PermitLimit", "1000");
+        builder.UseSetting("Shutdown:DrainDelay", "00:00:00");
 
         builder.ConfigureTestServices(services =>
-            services.ConfigureOpenTelemetryTracerProvider(tracing => tracing.AddInMemoryExporter(Spans)));
+        {
+            services.ConfigureOpenTelemetryTracerProvider(tracing => tracing.AddInMemoryExporter(Spans));
+#if (UseJwt)
+            services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.TokenValidationParameters.ValidIssuer = TestTokens.Issuer;
+                options.TokenValidationParameters.ValidAudience = TestTokens.Audience;
+                options.TokenValidationParameters.IssuerSigningKey = TestTokens.SigningKey;
+            });
+#endif
+        });
     }
+#if (UseJwt)
+
+    /// <summary>Clients get a token with every scope by default; auth tests replace or remove it.</summary>
+    protected override void ConfigureClient(HttpClient client)
+    {
+        base.ConfigureClient(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", TestTokens.Create("test-client", ["orders:read", "orders:write"]));
+    }
+#endif
 }
 
 /// <summary>Thread-safe collection for exporters that write from request threads while a test reads.</summary>

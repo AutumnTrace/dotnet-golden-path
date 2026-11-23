@@ -11,6 +11,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Generated service: vertical-slice minimal APIs with a sample Orders slice, built-in request validation, RFC 9457 problem details with stable error codes, URL-segment API versioning and per-version OpenAPI documents
 - Serilog console logging (JSON or text) bridged into OpenTelemetry; traces, metrics and logs with OTLP and/or Azure Monitor exporters (`--observability`)
 - `/health/live` and `/health/ready` probes
+- `--auth jwt|none`: JWT bearer authentication configured from `Authentication:Schemes:Bearer` (works with `dotnet user-jwts`), scope policies, a secure-by-default fallback policy and the bearer scheme in the OpenAPI document
+- Per-client rate limiting with `429` problem details and `Retry-After`
+- Resilient typed `HttpClient` for a downstream customer directory (standard pipeline: timeouts, retries with jitter, circuit breaker), configured from `appsettings.json`, with a local stub at the HTTP boundary
+- Graceful shutdown: readiness fails first, a configurable drain delay, then a bounded shutdown timeout
+- Options validated at startup for every settings section; bad configuration stops the service with a message naming the setting
 - Unit and API tests in the generated service; template tests and a CI matrix in this repository
 
 [Unreleased]: https://github.com/AutumnTrace/dotnet-golden-path/commits/main

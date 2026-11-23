@@ -4,10 +4,15 @@
     "observability": {
       "longName": "observability",
       "shortName": ""
+    },
+    "auth": {
+      "longName": "auth",
+      "shortName": ""
     }
   },
   "usageExamples": [
     "-n Orders",
-    "-n Orders --observability both"
+    "-n Orders --observability both",
+    "-n Orders --auth none"
   ]
 }

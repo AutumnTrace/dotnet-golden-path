@@ -18,7 +18,9 @@ dotnet new install "$work"/pkg/GoldenPath.Templates.*.nupkg --debug:custom-hive 
 
 combinations=()
 for observability in otlp appinsights both; do
-  combinations+=("--observability $observability")
+  for auth in jwt none; do
+    combinations+=("--observability $observability --auth $auth")
+  done
 done
 
 passed=0
