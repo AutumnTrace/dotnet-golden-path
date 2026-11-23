@@ -44,20 +44,40 @@ public sealed class IntegrationFixture : IAsyncLifetime
         Service.StartServer();
     }
 
+    /// <summary>Tears everything down even if one step fails, and says which step failed.</summary>
     public async ValueTask DisposeAsync()
     {
+        var failures = new List<Exception>();
+        async Task Step(Func<ValueTask> dispose)
+        {
+            try
+            {
+                await dispose();
+            }
+            catch (Exception exception)
+            {
+                await Console.Error.WriteLineAsync($"Integration fixture cleanup failed: {exception}");
+                failures.Add(exception);
+            }
+        }
+
         if (Service is not null)
         {
-            await Service.DisposeAsync();
+            await Step(Service.DisposeAsync);
         }
 #if (UseKafka)
 
-        await Kafka.DisposeAsync();
+        await Step(Kafka.DisposeAsync);
 #endif
 #if (UsePostgres)
 
-        await Postgres.DisposeAsync();
+        await Step(Postgres.DisposeAsync);
 #endif
+
+        if (failures.Count > 0)
+        {
+            throw new AggregateException("Integration infrastructure did not shut down cleanly.", failures);
+        }
     }
 }
 

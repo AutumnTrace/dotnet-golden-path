@@ -14,6 +14,7 @@ namespace Company.Service.Api.Infrastructure.Messaging;
 internal sealed partial class KafkaMessagePublisher : IMessagePublisher, IDisposable
 {
     private readonly IProducer<string, string> _producer;
+    private int _disposed;
 
     public KafkaMessagePublisher(IOptions<MessagingOptions> options, ILogger<KafkaMessagePublisher> logger)
     {
@@ -69,6 +70,12 @@ internal sealed partial class KafkaMessagePublisher : IMessagePublisher, IDispos
 
     public void Dispose()
     {
+        // Registered as itself and as IMessagePublisher, so the container may dispose it twice.
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
+        {
+            return;
+        }
+
         // Deliver whatever is still batched before the process exits.
         _producer.Flush(TimeSpan.FromSeconds(5));
         _producer.Dispose();
