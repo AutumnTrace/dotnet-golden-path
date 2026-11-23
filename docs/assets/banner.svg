@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-labelledby="title desc">
+  <title id="title">dotnet-golden-path</title>
+  <desc id="desc">A golden path winding through milestones on a dark background, with the project name and tagline.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0f1f"/>
+      <stop offset="0.55" stop-color="#141b3a"/>
+      <stop offset="1" stop-color="#2a1640"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#b7791f"/>
+      <stop offset="0.5" stop-color="#f6c453"/>
+      <stop offset="1" stop-color="#ffe6a3"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.78" cy="0.35" r="0.45">
+      <stop offset="0" stop-color="#f6c453" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#f6c453" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1.5" fill="#ffffff" fill-opacity="0.06"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="320" fill="url(#bg)"/>
+  <rect width="1280" height="320" fill="url(#grid)"/>
+  <rect width="1280" height="320" fill="url(#glow)"/>
+
+  <!-- The path: from a blank repo (left) through build, test and ship to a running service (right). -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M 690 292 C 760 250, 760 200, 840 190 S 960 150, 1000 120 S 1090 60, 1200 48"
+          stroke="#f6c453" stroke-opacity="0.18" stroke-width="22"/>
+    <path d="M 690 292 C 760 250, 760 200, 840 190 S 960 150, 1000 120 S 1090 60, 1200 48"
+          stroke="url(#gold)" stroke-width="6"/>
+    <path d="M 690 292 C 760 250, 760 200, 840 190 S 960 150, 1000 120 S 1090 60, 1200 48"
+          stroke="#0a0f1f" stroke-width="1.5" stroke-dasharray="2 14"/>
+  </g>
+
+  <!-- Milestones -->
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#c9cfe6">
+    <g>
+      <circle cx="778" cy="232" r="11" fill="#141b3a" stroke="url(#gold)" stroke-width="3"/>
+      <text x="798" y="252">build</text>
+    </g>
+    <g>
+      <circle cx="905" cy="170" r="11" fill="#141b3a" stroke="url(#gold)" stroke-width="3"/>
+      <text x="925" y="190">test</text>
+    </g>
+    <g>
+      <circle cx="1020" cy="110" r="11" fill="#141b3a" stroke="url(#gold)" stroke-width="3"/>
+      <text x="1040" y="130">ship</text>
+    </g>
+    <g>
+      <circle cx="1200" cy="48" r="15" fill="url(#gold)"/>
+      <path d="M 1193 48 l 5 5 l 9 -10" fill="none" stroke="#0a0f1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="1120" y="88">observe</text>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <text x="72" y="140" font-size="58" font-weight="700" fill="#ffffff" letter-spacing="-1">dotnet-<tspan fill="url(#gold)">golden</tspan>-path</text>
+    <text x="74" y="186" font-size="22" fill="#c9cfe6">Production .NET 10 services, ready on day one.</text>
+    <g font-size="14" fill="#8f97b8">
+      <text x="74" y="246">dotnet new goldenpath-api</text>
+    </g>
+    <g font-size="13" fill="#e7d9b0">
+      <rect x="74" y="262" width="118" height="26" rx="13" fill="#ffffff" fill-opacity="0.06" stroke="#f6c453" stroke-opacity="0.35"/>
+      <text x="133" y="280" text-anchor="middle">OpenTelemetry</text>
+      <rect x="200" y="262" width="98" height="26" rx="13" fill="#ffffff" fill-opacity="0.06" stroke="#f6c453" stroke-opacity="0.35"/>
+      <text x="249" y="280" text-anchor="middle">Resilience</text>
+      <rect x="306" y="262" width="124" height="26" rx="13" fill="#ffffff" fill-opacity="0.06" stroke="#f6c453" stroke-opacity="0.35"/>
+      <text x="368" y="280" text-anchor="middle">Testcontainers</text>
+      <rect x="438" y="262" width="62" height="26" rx="13" fill="#ffffff" fill-opacity="0.06" stroke="#f6c453" stroke-opacity="0.35"/>
+      <text x="469" y="280" text-anchor="middle">Helm</text>
+      <rect x="508" y="262" width="62" height="26" rx="13" fill="#ffffff" fill-opacity="0.06" stroke="#f6c453" stroke-opacity="0.35"/>
+      <text x="539" y="280" text-anchor="middle">CI/CD</text>
+    </g>
+  </g>
+</svg>

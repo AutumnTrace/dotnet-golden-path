@@ -11,7 +11,7 @@ dotnet test
 
 # Thorough: pack, install into a throwaway hive, build and unit-test each combination.
 eng/verify-combinations.sh            # all combinations
-eng/verify-combinations.sh both       # only combinations whose arguments contain "both"
+eng/verify-combinations.sh "--messaging kafka"   # only combinations whose arguments contain the text
 ```
 
 Neither command touches your real `dotnet new` configuration. To try the template by hand:
@@ -38,4 +38,6 @@ dotnet new goldenpath-api --debug:custom-hive .scratch/hive -n Orders -o .scratc
 
 - One coherent change per PR, Conventional Commit titles (`feat:`, `fix:`, `docs:`, `test:`, `ci:`, `chore:`).
 - Update `CHANGELOG.md` under **Unreleased**.
-- If the change alters a convention, add or update an ADR in `docs/adr` and the relevant handbook page.
+- If the change alters a convention, add or update an ADR in `docs/adr` and the relevant page in `docs/handbook`.
+- If the generated API changes, update the approved OpenAPI snapshots in
+  `templates/goldenpath-api/tests/Company.Service.ApiTests/Snapshots/` (one per auth option).

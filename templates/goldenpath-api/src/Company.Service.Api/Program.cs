@@ -32,7 +32,10 @@ try
 #if (UseJwt)
     builder.Services.AddJwtAuthentication();
 #endif
+#if (UseIntegrationTests)
 
+    // Infrastructure this service owns.
+#endif
 #if (UsePostgres)
     builder.Services.AddPersistence(builder.Configuration);
 #endif

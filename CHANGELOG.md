@@ -5,29 +5,63 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-23
+
+First release: the `goldenpath-api` template, packaged as `GoldenPath.Templates` and attached to the GitHub release.
+
 ### Added
 
-- `goldenpath-api` template packaged as `GoldenPath.Templates`
-- Generated service: vertical-slice minimal APIs with a sample Orders slice, built-in request validation, RFC 9457 problem details with stable error codes, URL-segment API versioning and per-version OpenAPI documents
-- Serilog console logging (JSON or text) bridged into OpenTelemetry; traces, metrics and logs with OTLP and/or Azure Monitor exporters (`--observability`)
-- `/health/live` and `/health/ready` probes
-- `--auth jwt|none`: JWT bearer authentication configured from `Authentication:Schemes:Bearer` (works with `dotnet user-jwts`), scope policies, a secure-by-default fallback policy and the bearer scheme in the OpenAPI document
-- Per-client rate limiting with `429` problem details and `Retry-After`
-- Resilient typed `HttpClient` for a downstream customer directory (standard pipeline: timeouts, retries with jitter, circuit breaker), configured from `appsettings.json`, with a local stub at the HTTP boundary
-- Graceful shutdown: readiness fails first, a configurable drain delay, then a bounded shutdown timeout
-- Options validated at startup for every settings section; bad configuration stops the service with a message naming the setting
-- `--database postgres|none`: EF Core 10 on PostgreSQL with snake_case naming, migrations (applied on startup when enabled), order lines as a `jsonb` complex collection, `xmin` optimistic concurrency mapped to `409`, keyset paging, Npgsql tracing and a readiness check
-- `--messaging kafka|none`: `IMessagePublisher` over an outbox-ready `MessageEnvelope`, idempotent Kafka producer, at-least-once consumer with bounded retries and a dead-letter topic, W3C trace context in headers, a readiness check and an in-memory transport for local runs
-- Architecture tests (ArchUnitNET) that enforce slice independence, dependency direction, a framework-free domain and "only X may use library Y" rules, each with a positive control
-- OpenAPI contract snapshot test with an approved file per auth variant (`UPDATE_SNAPSHOTS=1` to accept a change)
-- Testcontainers integration tests (`Category=Integration`) for PostgreSQL and Kafka, and a shared `*.Testing` kit for API and integration tests
-- Multi-stage Dockerfile on the chiseled, non-root ASP.NET runtime image; runs with a read-only root file system
-- `docker-compose.yml` with the service, its chosen infrastructure and the Aspire dashboard as OTLP endpoint
-- Helm chart: Deployment (startup, liveness and readiness probes, resource requests and limits, read-only root file system, dropped capabilities, seccomp), Service, HPA, PDB, ConfigMap, ServiceAccount without a token, and a `helm test` readiness check
-- Generated GitHub Actions CI (build, tests, coverage summary, image, compose validation, Helm lint, kubeconform) and Dependabot configuration
-- `POST /dev/tokens` for local JWTs, available only in the Development environment
-- Unit and API tests in the generated service; template tests and a CI matrix in this repository
-- CI here: every combination builds and tests; a pairwise set also runs integration tests, builds the image, runs the compose stack end to end and validates the chart; the default output is deployed to a kind cluster with `helm install --wait`
-- Release workflow that attaches the template package to the GitHub release
+**Template**
 
-[Unreleased]: https://github.com/AutumnTrace/dotnet-golden-path/commits/main
+- `dotnet new goldenpath-api` with four options: `--database postgres|none`, `--messaging kafka|none`,
+  `--observability otlp|appinsights|both`, `--auth jwt|none`. All 24 combinations build with warnings as errors and
+  pass their tests.
+- Service name flows into projects, namespaces and a kebab-case slug used for the chart, image, compose project
+  and telemetry service name. Each instantiation gets its own user-secrets id and development signing key.
+
+**Generated service**
+
+- Vertical-slice minimal APIs with a sample Orders slice: place, get, list (keyset paging) and cancel; money as
+  minor units with an ISO 4217 currency; UUIDv7 ids; timestamps at microsecond precision.
+- Built-in .NET 10 request validation, RFC 9457 problem details everywhere with a stable `errorCode` and the
+  `traceId`, URL-segment API versioning and a per-version OpenAPI document.
+- Serilog console logging (JSON or text) bridged into OpenTelemetry; traces, metrics and logs exported over OTLP
+  and/or to Azure Monitor, each switched on by its standard setting.
+- `/health/live` and `/health/ready`; readiness checks only the service's own dependencies and fails while draining.
+- Resilient typed `HttpClient` for a downstream customer directory (timeouts, retries with jitter, circuit breaker,
+  no retries for unsafe methods), configured from `appsettings.json`, with a stub at the HTTP boundary for local runs.
+- Per-client rate limiting with `429` and `Retry-After`; graceful shutdown with a drain delay and a bounded timeout;
+  every options section validated at startup.
+- `--auth jwt`: JWT bearer from `Authentication:Schemes:Bearer`, scope policies, a deny-by-default fallback policy,
+  the bearer scheme in the OpenAPI document, and `POST /dev/tokens` in Development only.
+- `--database postgres`: EF Core 10 with snake_case naming, an initial migration, order lines as a `jsonb` complex
+  collection, `xmin` optimistic concurrency mapped to `409`, migrate-on-startup switch, Npgsql telemetry and a
+  readiness check. An in-memory store keeps `dotnet run` Docker-free.
+- `--messaging kafka`: `IMessagePublisher` over an outbox-ready envelope, idempotent producer, at-least-once
+  consumer with retries and a dead-letter topic, W3C trace context in headers, topic bootstrap, readiness check and
+  an in-memory transport for local runs.
+- Tests: unit, API (`WebApplicationFactory`), architecture (ArchUnitNET), an approved OpenAPI contract snapshot and
+  Testcontainers integration tests tagged `Category=Integration`, plus a shared `*.Testing` kit.
+- Multi-stage `Dockerfile` on the chiseled, non-root ASP.NET image with a read-only root file system;
+  `docker-compose.yml` with the chosen infrastructure and the Aspire dashboard.
+- Helm chart: Deployment with probes, requests and limits and a restricted security context, Service, HPA, PDB,
+  ConfigMap, a token-less ServiceAccount and a `helm test` readiness check.
+- Generated GitHub Actions CI (build, tests, coverage summary, image, compose and chart validation), Dependabot
+  configuration and a README filled in for the service.
+
+**This repository**
+
+- Template tests that generate all 24 combinations and check the output, plus a test that the package carries
+  exactly the template files.
+- CI: every combination built and unit-tested; a pairwise-covering set also runs integration tests, builds the
+  image, runs the compose stack end to end and validates the chart; the default output is deployed to a kind
+  cluster with `helm install --wait` and `helm test`.
+- Release workflow that tests, packs, smoke-tests and attaches `GoldenPath.Templates.<version>.nupkg` to the
+  GitHub release.
+- Engineering handbook (onboarding, service anatomy, observability, errors, resilience, testing, code review,
+  ADRs) and five architecture decision records.
+- `eng/verify-combinations.sh` to build and test every combination locally without touching the machine's
+  `dotnet new` configuration.
+
+[Unreleased]: https://github.com/AutumnTrace/dotnet-golden-path/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/AutumnTrace/dotnet-golden-path/releases/tag/v0.1.0
