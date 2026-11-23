@@ -50,8 +50,13 @@ updates:
       actions:
         patterns: ["*"]
 
-  # The base images of generated services.
+  # The base images of generated services. Patch tags only: the .NET major follows the TargetFramework.
   - package-ecosystem: docker
     directory: /templates/goldenpath-api
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: "dotnet/sdk"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotnet/aspnet"
+        update-types: ["version-update:semver-major"]
