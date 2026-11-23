@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------------------------------------
 # Build stage: the full SDK lives here and only here.
 # ---------------------------------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # Restore in its own layer, reused until a project file or a package version changes.
