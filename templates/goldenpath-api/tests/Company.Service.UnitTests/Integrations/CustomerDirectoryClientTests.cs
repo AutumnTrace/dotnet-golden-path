@@ -128,6 +128,21 @@ public class CustomerDirectoryClientTests
         Assert.Equal(expected, await Directory(services).GetStatusAsync(customerId, Ct));
     }
 
+    [Fact]
+    public async Task Without_a_resilience_section_the_library_defaults_apply()
+    {
+        var handler = new ScriptedHandler(ScriptedHandler.Ok(new { id = "cust-1", status = "active" }));
+        using var services = BuildServices(handler, settings =>
+        {
+            foreach (var key in settings.Keys.Where(k => k.StartsWith("CustomerDirectory:Resilience", StringComparison.Ordinal)).ToList())
+            {
+                settings.Remove(key);
+            }
+        });
+
+        Assert.Equal(CustomerStatus.Active, await Directory(services).GetStatusAsync("cust-1", Ct));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("not-a-uri")]

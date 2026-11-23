@@ -48,7 +48,7 @@ public class OrdersApiTests(ServiceFactory factory) : IClassFixture<ServiceFacto
         Assert.Equal(404, problem.GetProperty("status").GetInt32());
         Assert.Equal("orders.not_found", problem.GetProperty("errorCode").GetString());
         Assert.Contains(id.ToString(), problem.GetProperty("detail").GetString(), StringComparison.Ordinal);
-        Assert.False(string.IsNullOrEmpty(problem.GetProperty("traceId").GetString()));
+        Assert.Matches("^[0-9a-f]{32}$", problem.GetProperty("traceId").GetString());
     }
 
     [Fact]
