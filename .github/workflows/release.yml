@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  package:
+    name: Pack and attach the template package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Version from the tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Build and run the template tests
+        run: |
+          dotnet build -c Release -p:Version="$VERSION"
+          dotnet test -c Release --no-build
+
+      - name: Pack
+        run: dotnet pack src/GoldenPath.Templates -c Release --no-build -p:Version="$VERSION" -o artifacts
+
+      - name: Install the package and build a service from it
+        run: |
+          dotnet new install "artifacts/GoldenPath.Templates.$VERSION.nupkg"
+          dotnet new goldenpath-api -n Smoke -o "$RUNNER_TEMP/smoke"
+          dotnet build "$RUNNER_TEMP/smoke" -c Release
+
+      - name: Attach the package to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" artifacts/*.nupkg --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" artifacts/*.nupkg --title "$GITHUB_REF_NAME" --notes "See CHANGELOG.md for what changed."
+          fi

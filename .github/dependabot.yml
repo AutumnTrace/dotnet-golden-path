@@ -43,9 +43,15 @@ updates:
         patterns: ["Serilog*"]
 
   - package-ecosystem: github-actions
-    directory: /
+    directories: ["/", "/templates/goldenpath-api"]
     schedule:
       interval: weekly
     groups:
       actions:
         patterns: ["*"]
+
+  # The base images of generated services.
+  - package-ecosystem: docker
+    directory: /templates/goldenpath-api
+    schedule:
+      interval: monthly

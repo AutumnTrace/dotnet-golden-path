@@ -1,0 +1,7 @@
+{{ include "company-service.fullname" . }} is deployed.
+
+  kubectl rollout status deployment/{{ include "company-service.fullname" . }} -n {{ .Release.Namespace }}
+  kubectl port-forward service/{{ include "company-service.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  curl http://localhost:8080/health/ready
+
+Check readiness from inside the cluster with: helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

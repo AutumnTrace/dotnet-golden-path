@@ -71,6 +71,19 @@ public class CustomerDirectoryClientTests
     }
 
     [Fact]
+    public async Task Unsafe_methods_are_never_retried()
+    {
+        var handler = new ScriptedHandler(ScriptedHandler.Status(HttpStatusCode.ServiceUnavailable));
+        using var services = BuildServices(handler);
+        using var http = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ICustomerDirectory));
+
+        using var response = await http.PostAsync(new Uri("customers", UriKind.Relative), content: null, Ct);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
     public async Task A_hanging_dependency_is_cut_off_by_the_attempt_timeout()
     {
         var handler = new ScriptedHandler(ScriptedHandler.Hang);
@@ -113,6 +126,21 @@ public class CustomerDirectoryClientTests
         using var services = BuildServices(handler: null, settings => settings["CustomerDirectory:UseStub"] = "true");
 
         Assert.Equal(expected, await Directory(services).GetStatusAsync(customerId, Ct));
+    }
+
+    [Fact]
+    public async Task Without_a_resilience_section_the_library_defaults_apply()
+    {
+        var handler = new ScriptedHandler(ScriptedHandler.Ok(new { id = "cust-1", status = "active" }));
+        using var services = BuildServices(handler, settings =>
+        {
+            foreach (var key in settings.Keys.Where(k => k.StartsWith("CustomerDirectory:Resilience", StringComparison.Ordinal)).ToList())
+            {
+                settings.Remove(key);
+            }
+        });
+
+        Assert.Equal(CustomerStatus.Active, await Directory(services).GetStatusAsync("cust-1", Ct));
     }
 
     [Theory]

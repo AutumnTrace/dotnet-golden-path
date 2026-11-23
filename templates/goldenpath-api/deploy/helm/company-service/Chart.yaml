@@ -1,0 +1,6 @@
+apiVersion: v2
+name: company-service
+description: Deploys the company-service API with probes, autoscaling, a disruption budget and a locked-down pod.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

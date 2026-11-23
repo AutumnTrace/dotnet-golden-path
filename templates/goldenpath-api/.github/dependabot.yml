@@ -1,0 +1,43 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    # The service targets the .NET 10 LTS line: framework-aligned majors move together with the TargetFramework.
+    ignore:
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Serilog.AspNetCore"
+        update-types: ["version-update:semver-major"]
+#if (UsePostgres)
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Npgsql*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "EFCore.NamingConventions"
+        update-types: ["version-update:semver-major"]
+#endif
+    groups:
+      opentelemetry:
+        patterns: ["OpenTelemetry*", "Azure.Monitor.*"]
+      platform:
+#if (UsePostgres)
+        patterns: ["Microsoft.*", "Asp.Versioning.*", "Npgsql*", "EFCore.*"]
+#else
+        patterns: ["Microsoft.*", "Asp.Versioning.*"]
+#endif
+      test:
+        patterns: ["xunit*", "coverlet.*", "Microsoft.NET.Test.Sdk", "Testcontainers*", "TngTech.*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly

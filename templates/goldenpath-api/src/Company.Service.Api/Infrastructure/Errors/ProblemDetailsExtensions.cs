@@ -25,7 +25,8 @@ public static class ProblemDetailsExtensions
             var http = context.HttpContext;
 
             problem.Instance ??= $"{http.Request.Method} {http.Request.Path}";
-            problem.Extensions.TryAdd(TraceIdKey, Activity.Current?.TraceId.ToString() ?? http.TraceIdentifier);
+            // The 32-hex trace id, which is what tracing backends search by (not the full traceparent).
+            problem.Extensions[TraceIdKey] = Activity.Current?.TraceId.ToString() ?? http.TraceIdentifier;
 
             if (context.Exception is BadHttpRequestException badRequest)
             {

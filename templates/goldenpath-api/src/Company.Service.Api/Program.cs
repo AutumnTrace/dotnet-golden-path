@@ -60,6 +60,9 @@ try
 
     app.MapHealthEndpoints();
     app.MapApiDocuments();
+#if (UseJwt)
+    app.MapDevelopmentTokens();
+#endif
     app.MapOrdersEndpoints();
 
     await app.RunAsync();

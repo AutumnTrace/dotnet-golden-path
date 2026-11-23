@@ -26,6 +26,7 @@ public static class AuthExtensions
 
         services.AddSingleton<IValidateOptions<JwtBearerOptions>, JwtBearerOptionsValidator>();
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme).ValidateOnStart();
+        services.AddDevelopmentTokens();
 
         services.AddAuthorizationBuilder()
             .SetFallbackPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
@@ -81,6 +82,6 @@ internal sealed partial class JwtBearerOptionsValidator(IHostEnvironment environ
     }
 
     [LoggerMessage(Level = LogLevel.Warning,
-        Message = "No JWT authority or signing keys configured: every authenticated request will fail. Run `dotnet user-jwts create --scope orders:read --scope orders:write` in the API project to mint a local token.")]
+        Message = "No JWT authority or signing keys configured: every authenticated request will fail. Enable Authentication:DevelopmentTokens or run `dotnet user-jwts create --scope orders:read --scope orders:write` in the API project.")]
     private static partial void LogNoSigningKeys(ILogger logger);
 }
