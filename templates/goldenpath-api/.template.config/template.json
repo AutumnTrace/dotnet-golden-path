@@ -186,6 +186,24 @@
           "exclude": [
             "tests/Company.Service.IntegrationTests/**"
           ]
+        },
+        {
+          "condition": "(UseJwt)",
+          "exclude": [
+            "tests/Company.Service.ApiTests/Snapshots/openapi-v1.none.approved.json"
+          ],
+          "rename": {
+            "tests/Company.Service.ApiTests/Snapshots/openapi-v1.jwt.approved.json": "tests/Company.Service.ApiTests/Snapshots/openapi-v1.approved.json"
+          }
+        },
+        {
+          "condition": "(!UseJwt)",
+          "exclude": [
+            "tests/Company.Service.ApiTests/Snapshots/openapi-v1.jwt.approved.json"
+          ],
+          "rename": {
+            "tests/Company.Service.ApiTests/Snapshots/openapi-v1.none.approved.json": "tests/Company.Service.ApiTests/Snapshots/openapi-v1.approved.json"
+          }
         }
       ]
     }

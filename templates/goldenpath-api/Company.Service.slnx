@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Company.Service.ApiTests/Company.Service.ApiTests.csproj" />
+    <Project Path="tests/Company.Service.ArchitectureTests/Company.Service.ArchitectureTests.csproj" />
 <!--#if (UseIntegrationTests) -->
     <Project Path="tests/Company.Service.IntegrationTests/Company.Service.IntegrationTests.csproj" />
 <!--#endif -->

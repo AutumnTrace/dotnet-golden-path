@@ -130,6 +130,19 @@ public class InstantiationTests(TemplateFixture template)
     }
 
     [Theory]
+    [MemberData(nameof(Combinations))]
+    public async Task Every_service_ships_architecture_tests_and_the_matching_api_contract_snapshot(string arguments)
+    {
+        var options = Parse(arguments);
+        var service = await GenerateAsync(arguments);
+        var snapshots = $"tests/{options.ServiceName}.ApiTests/Snapshots";
+
+        Assert.True(service.Exists($"tests/{options.ServiceName}.ArchitectureTests/ArchitectureTests.cs"));
+        Assert.Equal([$"{snapshots}/openapi-v1.approved.json"], service.Files.Where(f => f.StartsWith(snapshots, StringComparison.Ordinal)));
+        Assert.Equal(options.UsesJwt, service.Read($"{snapshots}/openapi-v1.approved.json").Contains("\"securitySchemes\"", StringComparison.Ordinal));
+    }
+
+    [Theory]
     [InlineData("Orders", "Orders.Api", "orders")]
     [InlineData("Wallet.Gateway", "Wallet.Gateway.Api", "wallet-gateway")]
     [InlineData("PaymentRouting", "PaymentRouting.Api", "payment-routing")]
