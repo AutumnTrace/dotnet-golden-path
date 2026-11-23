@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  template:
+    name: Template tests and package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build -c Release
+
+      - name: Template tests
+        run: dotnet test -c Release --no-build --logger "trx;LogFileName=template-tests.trx"
+
+      - name: Pack
+        run: dotnet pack src/GoldenPath.Templates -c Release --no-build -o artifacts
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: template-package
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: template-test-results
+          path: tests/**/TestResults/*.trx
+
+  service:
+    name: Service (${{ matrix.name }})
+    needs: template
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: otlp
+            args: --observability otlp
+          - name: appinsights
+            args: --observability appinsights
+          - name: both
+            args: --observability both
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: template-package
+          path: artifacts
+
+      - name: Install the packed template
+        run: dotnet new install artifacts/GoldenPath.Templates.*.nupkg
+
+      - name: Generate the service
+        run: dotnet new goldenpath-api -n Orders -o "$RUNNER_TEMP/svc" ${{ matrix.args }}
+
+      - name: Build
+        working-directory: ${{ runner.temp }}/svc
+        run: dotnet build -c Release
+
+      - name: Unit and API tests
+        working-directory: ${{ runner.temp }}/svc
+        run: dotnet test -c Release --no-build --filter "Category!=Integration" --logger "trx;LogFileName=results.trx"
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: service-test-results-${{ matrix.name }}
+          path: ${{ runner.temp }}/svc/tests/**/TestResults/*.trx

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>GoldenPath.Templates</PackageId>
+    <Title>Golden path templates for production .NET services</Title>
+    <Description>dotnet new templates for production-ready .NET 10 services: vertical-slice minimal APIs, OpenTelemetry, Serilog, resilience, health probes, Testcontainers, a chiseled Docker image, a Helm chart and CI.</Description>
+    <PackageTags>dotnet-new;templates;aspnetcore;minimal-api;opentelemetry;serilog;testcontainers;helm;kubernetes</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/AutumnTrace/dotnet-golden-path</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- A template package ships content only: no assembly, no dependencies. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <IsPackable>true</IsPackable>
+    <!-- NU5128: no lib/ folder is expected for a template package. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\templates\**\*"
+             Exclude="..\..\templates\**\bin\**;..\..\templates\**\obj\**;..\..\templates\**\TestResults\**;..\..\templates\**\*.received.*;..\..\templates\**\*.user"
+             PackagePath="content\%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

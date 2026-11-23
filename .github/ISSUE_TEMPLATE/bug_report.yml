@@ -1,0 +1,38 @@
+name: Bug report
+description: The template generates something broken or surprising
+labels: [bug]
+body:
+  - type: input
+    id: command
+    attributes:
+      label: dotnet new command
+      description: The exact command, including every option.
+      placeholder: dotnet new goldenpath-api -n Orders --observability both
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Build errors, failing tests, runtime behaviour. Paste the relevant output.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Template version and .NET SDK
+      placeholder: GoldenPath.Templates 0.1.0, SDK 10.0.100
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Linux, macOS, Windows]

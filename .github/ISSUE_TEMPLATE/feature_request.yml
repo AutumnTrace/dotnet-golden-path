@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose a new convention, option or capability for generated services
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What do teams have to build by hand today that the golden path should give them?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: New option, new default, or a change to an existing convention? Sketch the generated code if it helps.
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Trade-offs and alternatives
+      description: Every default has a cost for someone. Who pays for this one?
+  - type: checkboxes
+    id: adr
+    attributes:
+      label: Decision record
+      options:
+        - label: This changes a convention and needs an ADR in docs/adr

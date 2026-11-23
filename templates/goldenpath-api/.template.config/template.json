@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Mina Rotari",
+  "classifications": ["Web", "WebAPI", "Service", "Cloud"],
+  "identity": "GoldenPath.Api.CSharp",
+  "groupIdentity": "GoldenPath.Api",
+  "name": "Golden path ASP.NET Core service",
+  "description": "A production-ready .NET 10 service: vertical-slice minimal APIs, OpenTelemetry, Serilog, health probes and tests, ready on day one.",
+  "shortName": "goldenpath-api",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "sourceName": "Company.Service",
+  "preferNameDirectory": true,
+  "defaultName": "Orders",
+  "symbols": {
+    "observability": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Where telemetry (traces, metrics and logs) is exported. Exporters switch on only when their endpoint or connection string is configured.",
+      "choices": [
+        { "choice": "otlp", "description": "OTLP exporter (any OpenTelemetry collector, the Aspire dashboard, Grafana, Jaeger, ...)" },
+        { "choice": "appinsights", "description": "Azure Monitor exporter (Application Insights)" },
+        { "choice": "both", "description": "OTLP and Azure Monitor side by side" }
+      ],
+      "defaultValue": "otlp"
+    },
+    "UseOtlp": {
+      "type": "computed",
+      "value": "(observability == \"otlp\" || observability == \"both\")"
+    },
+    "UseAppInsights": {
+      "type": "computed",
+      "value": "(observability == \"appinsights\" || observability == \"both\")"
+    },
+    "serviceSlug": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "slug",
+      "replaces": "company-service",
+      "fileRename": "company-service"
+    }
+  },
+  "forms": {
+    "slug": {
+      "identifier": "chain",
+      "steps": ["nonAlphanumericToDash", "kebab"]
+    },
+    "nonAlphanumericToDash": {
+      "identifier": "replace",
+      "pattern": "[^A-Za-z0-9]+",
+      "replacement": "-"
+    },
+    "kebab": {
+      "identifier": "kebabCase"
+    }
+  },
+  "guids": [
+    "6f0d7c1e-3b9a-4c55-9e2f-1a8b7d4c2e90"
+  ],
+  "sources": [
+    {
+      "exclude": [
+        "**/[Bb]in/**",
+        "**/[Oo]bj/**",
+        ".template.config/**/*",
+        "**/*.received.*",
+        "**/TestResults/**",
+        "**/*.user"
+      ]
+    }
+  ],
+  "primaryOutputs": [
+    { "path": "Company.Service.slnx" }
+  ]
+}
