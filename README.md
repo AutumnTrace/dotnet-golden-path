@@ -13,7 +13,7 @@
 ![Kafka](https://img.shields.io/badge/Kafka-4.4-231F20?logo=apachekafka&logoColor=white)
 ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-1.21-425CC7?logo=opentelemetry&logoColor=white)
 ![Helm](https://img.shields.io/badge/Helm-chart-0F1689?logo=helm&logoColor=white)
-![Template tests](https://img.shields.io/badge/template%20tests-249%20passing-brightgreen)
+![Template tests](https://img.shields.io/badge/template%20tests-273%20passing-brightgreen)
 ![Generated service tests](https://img.shields.io/badge/generated%20service%20tests-139%20passing-brightgreen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -384,7 +384,7 @@ dotnet test --filter "Category=Integration"    # Testcontainers
 ### In this repository
 
 ```bash
-dotnet test                       # 249 template tests: every combination generated and checked, package contents
+dotnet test                       # 273 template tests: every combination generated and checked, package contents
 eng/verify-combinations.sh        # pack, install into a throwaway hive, build and test all 24 combinations
 ```
 

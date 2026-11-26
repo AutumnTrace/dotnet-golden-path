@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace GoldenPath.Templates.Tests;
@@ -197,8 +198,39 @@ public class InstantiationTests(TemplateFixture template)
         Assert.NotEqual("6f0d7c1e-3b9a-4c55-9e2f-1a8b7d4c2e90", SecretsId(first));
     }
 
+    [Theory]
+    [MemberData(nameof(Combinations))]
+    public async Task Dependabot_keeps_every_framework_aligned_dependency_on_the_current_major(string arguments)
+    {
+        var service = await GenerateAsync(arguments);
+
+        // This repository's own config is the list of what moves only together with the TargetFramework.
+        var frameworkAligned = MajorUpdateIgnores(File.ReadAllText(Path.Combine(TemplateFixture.RepositoryRoot, ".github", "dependabot.yml")));
+        var ignored = MajorUpdateIgnores(service.Read(".github/dependabot.yml"));
+
+        var packages = XDocument.Parse(service.Read("Directory.Packages.props"))
+            .Descendants("PackageVersion")
+            .Select(package => (string)package.Attribute("Include")!);
+        var tools = service.Exists(".config/dotnet-tools.json")
+            ? JsonDocument.Parse(service.Read(".config/dotnet-tools.json")).RootElement.GetProperty("tools").EnumerateObject().Select(tool => tool.Name)
+            : [];
+        var aligned = packages.Concat(tools).Where(name => frameworkAligned.Any(pattern => MatchesWildcard(pattern, name))).ToList();
+        var unguarded = aligned.Where(name => !ignored.Any(pattern => MatchesWildcard(pattern, name))).ToList();
+
+        Assert.NotEmpty(aligned);
+        Assert.True(unguarded.Count == 0, $"No semver-major ignore in the generated dependabot.yml for: {string.Join(", ", unguarded)}");
+    }
+
     private static TemplateOptions Parse(string arguments) =>
         TemplateOptions.All().Single(options => options.ToString() == arguments);
+
+    /// <summary>Dependency names, with Dependabot's <c>*</c> wildcards, whose semver-major updates are ignored.</summary>
+    private static List<string> MajorUpdateIgnores(string dependabotYaml) =>
+        [.. Regex.Matches(dependabotYaml, """- dependency-name: "(?<name>[^"]+)"\s+update-types: \["version-update:semver-major"\]""")
+            .Select(match => match.Groups["name"].Value)];
+
+    private static bool MatchesWildcard(string pattern, string name) =>
+        Regex.IsMatch(name, $"^{Regex.Escape(pattern).Replace(@"\*", ".*", StringComparison.Ordinal)}$", RegexOptions.IgnoreCase);
 
     /// <summary>Each combination is generated once per test run and shared by every check on it.</summary>
     private async Task<GeneratedService> GenerateAsync(string arguments)
