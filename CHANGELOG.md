@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- The generated `.github/dependabot.yml` ignores semver-major updates of `dotnet-ef`, so the EF Core tool in `.config/dotnet-tools.json` stays on the same major as the EF Core packages. A template test now checks, for every combination, that each framework-aligned dependency of the generated service has such a rule, using this repository's Dependabot config as the list (#9)
+
 ## [0.1.0] - 2026-11-23
 
 First release: the `goldenpath-api` template, packaged as `GoldenPath.Templates` and attached to the GitHub release.
